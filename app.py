@@ -421,7 +421,34 @@ def send_email(to_email, subject, body, html_content=None):
             except Exception as e:
                 print(f"[WARN] Brevo Email Exception: {str(e)}", flush=True)
 
-    # 2. Try Resend API
+    # 2. Try SendGrid API
+    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+    if sendgrid_key:
+        clean_sg_key = sendgrid_key.strip().strip("'").strip('"')
+        if clean_sg_key:
+            try:
+                url = "https://api.sendgrid.com/v3/mail/send"
+                headers = {
+                    "Authorization": f"Bearer {clean_sg_key}",
+                    "Content-Type": "application/json"
+                }
+                sender = os.getenv("SENDER_EMAIL", "nandareddylinkdin@gmail.com")
+                payload = {
+                    "personalizations": [{"to": [{"email": to_email}]}],
+                    "from": {"email": sender, "name": "Scam Shield AI"},
+                    "subject": subject,
+                    "content": [{"type": "text/html" if html_content else "text/plain", "value": html_content or body}]
+                }
+                resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in [200, 201, 202]:
+                    print(f"[OK] OTP Email sent via SendGrid API to {to_email}", flush=True)
+                    return True
+                else:
+                    print(f"[WARN] SendGrid Email Error ({resp.status_code}): {resp.text}", flush=True)
+            except Exception as e:
+                print(f"[WARN] SendGrid Email Exception: {str(e)}", flush=True)
+
+    # 3. Try Resend API
     api_key = os.getenv("RESEND_API_KEY")
     if api_key:
         clean_api_key = api_key.strip().strip("'").strip('"')
