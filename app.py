@@ -388,39 +388,43 @@ def generate_otp_email_html(otp_code, action_name="Account Registration"):
 def send_email(to_email, subject, body, html_content=None):
     """
     Sends an email using SMTP (e.g. Gmail App Password, Outlook) or Resend API fallback.
-    Returns True if sent successfully, False otherwise.
+    Supports both Port 465 (SSL) and Port 587 (TLS) for cloud hosting environments (Render).
     """
-    # 1. Try SMTP if sender credentials configured
     smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
     sender_email = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")
 
     if sender_email and sender_password:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"Scam Shield AI <{sender_email}>"
+        msg["To"] = to_email
+        msg.attach(MIMEText(body, "plain"))
+        if html_content:
+            msg.attach(MIMEText(html_content, "html"))
+
+        # 1. Try Port 465 SSL directly (works reliably on cloud hosts like Render)
         try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"Scam Shield AI <{sender_email}>"
-            msg["To"] = to_email
+            with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
+                server.login(sender_email, sender_password)
+                server.sendmail(sender_email, to_email, msg.as_string())
+            print(f"[OK] OTP Email sent via SMTP_SSL (Port 465) to {to_email}", flush=True)
+            return True
+        except Exception as err465:
+            print(f"[WARN] SMTP_SSL Port 465 failed ({err465}), trying Port 587 TLS...", flush=True)
 
-            # Attach plain text
-            msg.attach(MIMEText(body, "plain"))
-
-            # Attach HTML if provided
-            if html_content:
-                msg.attach(MIMEText(html_content, "html"))
-
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+        # 2. Fallback to Port 587 STARTTLS
+        try:
+            with smtplib.SMTP(smtp_server, 587, timeout=10) as server:
                 server.starttls()
                 server.login(sender_email, sender_password)
                 server.sendmail(sender_email, to_email, msg.as_string())
-
-            print(f"[OK] OTP Email sent via SMTP to {to_email}", flush=True)
+            print(f"[OK] OTP Email sent via SMTP (Port 587) to {to_email}", flush=True)
             return True
-        except Exception as e:
-            print(f"[WARN] SMTP Email Error: {str(e)}", flush=True)
+        except Exception as err587:
+            print(f"[WARN] SMTP Port 587 Error: {str(err587)}", flush=True)
 
-    # 2. Try Resend API if configured
+    # 3. Try Resend API if configured
     api_key = os.getenv("RESEND_API_KEY")
     if api_key:
         try:
@@ -440,7 +444,7 @@ def send_email(to_email, subject, body, html_content=None):
         except Exception as e:
             print(f"[WARN] Resend Email Error: {str(e)}", flush=True)
 
-    print("[WARN] No email credentials configured in .env (SMTP_EMAIL/SENDER_EMAIL or RESEND_API_KEY). Email NOT delivered.", flush=True)
+    print("[WARN] No email credentials or all SMTP options failed. Email NOT delivered.", flush=True)
     return False
 
 # ---------------- REGISTER ----------------
