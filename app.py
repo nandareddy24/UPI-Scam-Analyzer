@@ -402,7 +402,7 @@ def send_email(to_email, subject, body, html_content=None):
                     "content-type": "application/json",
                     "accept": "application/json"
                 }
-                sender = os.getenv("SENDER_EMAIL", "nandareddylinkdin@gmail.com")
+                sender = os.getenv("BREVO_SENDER_EMAIL") or os.getenv("SENDER_EMAIL") or "nandakumarreddy63@gmail.com"
                 payload = {
                     "sender": {"name": "Scam Shield AI", "email": sender},
                     "to": [{"email": to_email}],
