@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 320px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .header {
+      display: flex;
+      items-center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .logo {
+      width: 28px;
+      height: 28px;
+      background: #14532d;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .title {
+      font-weight: 800;
+      font-size: 16px;
+    }
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #14532d;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #166534;
+    }
+    #result {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">🛡️</div>
+    <div class="title">Scam Shield AI</div>
+  </div>
+
+  <select id="scanType">
+    <option value="UPI">UPI Handle Checker</option>
+    <option value="URL">URL Phishing Scanner</option>
+    <option value="SMS">SMS Fraud Analyzer</option>
+  </select>
+
+  <input type="text" id="targetInput" placeholder="Enter UPI, URL, or text query...">
+  <button id="scanBtn">Run Threat Analysis</button>
+
+  <div id="result"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

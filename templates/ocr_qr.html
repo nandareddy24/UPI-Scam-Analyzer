@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URL Scanner - Scam Shield AI</title>
+    <title>OCR Screenshot & QR Scanner - Scam Shield AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -113,15 +113,9 @@
 
         <!-- Main Content Area -->
         <main class="flex-1 bg-[#f8fafc] p-6 md:p-8 overflow-y-auto h-full">
-            <!-- Top Search & Profile Bar -->
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
                 <div class="relative w-full sm:w-96">
-                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                    </div>
-                    <input type="text" placeholder="Search UPI ID, URL, or SMS query..." class="w-full pl-10 pr-12 py-2.5 bg-white border border-slate-200 rounded-full text-xs font-medium focus:outline-none focus:border-emerald-700 shadow-sm text-slate-700">
+                    <input type="text" placeholder="Search scanner features..." class="w-full pl-4 pr-4 py-2.5 bg-white border border-slate-200 rounded-full text-xs font-medium focus:outline-none focus:border-emerald-700 shadow-sm text-slate-700">
                 </div>
 
                 <div class="flex items-center gap-2.5 bg-white border border-slate-200 p-1.5 pr-4 rounded-full shadow-sm">
@@ -135,133 +129,158 @@
                 </div>
             </div>
 
-            <!-- Page Title -->
             <div class="mb-8">
-                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">URL & Phishing Scanner</h1>
-                <p class="text-slate-500 text-xs mt-1">Analyze domain parameters, shortened links, and fake login portals.</p>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">OCR Screenshot & QR Scanner</h1>
+                <p class="text-slate-500 text-xs mt-1">Upload payment screenshots, WhatsApp chats, or QR images to extract and verify threat data automatically.</p>
             </div>
 
-            <!-- Scanner Form Card -->
-            <div class="card-white p-6 md:p-8 mb-8">
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Target Web URL</label>
-                <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                    <input id="urlInput" type="text" placeholder="e.g. http://login-verify-bank.com" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-emerald-700">
-                    <button onclick="checkURL()" class="bg-[#14532d] hover:bg-[#166534] text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow">
-                        <span>Scan URL</span>
-                    </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                
+                <!-- OCR Screenshot Scanner Card -->
+                <div class="card-white p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">OCR Screenshot Scanner</h3>
+                            <p class="text-xs text-slate-400">Extracts UPI VPAs & URLs from images</p>
+                        </div>
+                    </div>
+
+                    <form id="ocrForm" class="space-y-4">
+                        <div class="border-2 border-dashed border-slate-200 hover:border-emerald-700 rounded-2xl p-6 text-center bg-slate-50/50 cursor-pointer">
+                            <input type="file" id="ocrFile" accept="image/*" class="hidden" onchange="previewFile('ocrFile', 'ocrPreviewName')">
+                            <label for="ocrFile" class="cursor-pointer">
+                                <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                                <span id="ocrPreviewName" class="text-xs font-semibold text-slate-600 block">Click to upload screenshot (.png, .jpg, .webp)</span>
+                            </label>
+                        </div>
+                        <button type="button" onclick="submitOCR()" class="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 rounded-xl text-xs transition-colors shadow">
+                            Scan Screenshot
+                        </button>
+                    </form>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 text-xs">
-                    <span class="text-slate-400 font-semibold">Test Examples:</span>
-                    <button onclick="setURL('http://login-verify-bank.com')" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px]">http://login-verify-bank.com</button>
-                    <button onclick="setURL('http://bit.ly/scam-claim123')" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px]">http://bit.ly/scam-claim123</button>
-                    <button onclick="setURL('https://google.com')" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[11px]">https://google.com</button>
+                <!-- QR Code Detector Card -->
+                <div class="card-white p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">QR Fraud Detector</h3>
+                            <p class="text-xs text-slate-400">Decodes UPI QR codes & pay payloads</p>
+                        </div>
+                    </div>
+
+                    <form id="qrForm" class="space-y-4">
+                        <div class="border-2 border-dashed border-slate-200 hover:border-emerald-700 rounded-2xl p-6 text-center bg-slate-50/50 cursor-pointer">
+                            <input type="file" id="qrFile" accept="image/*" class="hidden" onchange="previewFile('qrFile', 'qrPreviewName')">
+                            <label for="qrFile" class="cursor-pointer">
+                                <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span id="qrPreviewName" class="text-xs font-semibold text-slate-600 block">Click to upload QR Image</span>
+                            </label>
+                        </div>
+                        <input type="text" id="qrPayloadInput" placeholder="or paste payload: upi://pay?pa=scamuser@ybl..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono">
+                        <button type="button" onclick="submitQR()" class="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 rounded-xl text-xs transition-colors shadow">
+                            Decode & Scan QR
+                        </button>
+                    </form>
                 </div>
             </div>
 
+            <!-- Output Result -->
             <div id="result"></div>
         </main>
     </div>
 
     <script>
-        function setURL(val) {
-            document.getElementById('urlInput').value = val;
-            checkURL();
+        function previewFile(inputId, labelId) {
+            let file = document.getElementById(inputId).files[0];
+            if (file) {
+                document.getElementById(labelId).innerText = "Selected: " + file.name;
+            }
         }
 
-        function checkURL() {
-            let url = document.getElementById("urlInput").value.trim();
-            let result = document.getElementById("result");
+        function submitOCR() {
+            let fileInput = document.getElementById('ocrFile');
+            let result = document.getElementById('result');
 
-            if (!url) {
-                result.innerHTML = `<div class="card-white p-4 text-amber-700 bg-amber-50 text-xs font-semibold">Please enter a URL to scan.</div>`;
+            if (!fileInput.files[0]) {
+                alert("Please select a screenshot image file.");
                 return;
             }
 
-            result.innerHTML = `<div class="card-white p-6 text-center text-slate-500 text-xs font-semibold animate-pulse">Analyzing domain structure & ML phishing classifiers...</div>`;
+            result.innerHTML = `<div class="card-white p-6 text-center text-slate-500 text-xs font-semibold animate-pulse">Running OCR & extracting VPA/URL text...</div>`;
 
-            fetch("/check_url", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: url })
-            })
+            let formData = new FormData();
+            formData.append('screenshot', fileInput.files[0]);
+
+            fetch('/scan_ocr', { method: 'POST', body: formData })
             .then(res => res.json())
-            .then(data => {
-                let statusBg = data.score <= 3 ? "bg-emerald-50 text-emerald-800 border-emerald-200" : (data.score <= 7 ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-red-50 text-red-800 border-red-200");
-                let badge = data.score <= 3 ? "Verified Legitimate" : (data.score <= 7 ? "Medium Risk" : "Dangerous Phishing Link");
-                let confidence = data.confidence || 95;
-                let advice = data.advice || "Verify domain authenticity before entering banking credentials.";
+            .then(data => renderResult(data))
+            .catch(() => alert('Failed to analyze image.'));
+        }
 
-                let vtDetail = data.virustotal ? data.virustotal.details : "VirusTotal heuristic active";
-                let sbDetail = data.safebrowsing ? data.safebrowsing.details : "Google Safe Browsing heuristic active";
+        function submitQR() {
+            let fileInput = document.getElementById('qrFile');
+            let payload = document.getElementById('qrPayloadInput').value.trim();
+            let result = document.getElementById('result');
 
-                result.innerHTML = `
-                    <div class="card-white p-6 border ${statusBg} transition-all">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/80 mb-4 gap-2">
-                            <div>
-                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Classification Result</span>
-                                <h3 class="text-xl font-extrabold text-slate-900">${data.result} (${badge})</h3>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <div class="text-right">
-                                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Confidence</span>
-                                    <div class="text-lg font-bold font-mono text-emerald-700">${confidence}%</div>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Threat Score</span>
-                                    <div class="text-2xl font-extrabold font-mono text-slate-900">${data.score} <span class="text-xs font-normal text-slate-400">/ 25</span></div>
-                                </div>
-                            </div>
+            if (!fileInput.files[0] && !payload) {
+                alert("Please select a QR image file or enter a payload.");
+                return;
+            }
+
+            result.innerHTML = `<div class="card-white p-6 text-center text-slate-500 text-xs font-semibold animate-pulse">Decoding QR payload & analyzing VPA...</div>`;
+
+            let formData = new FormData();
+            if (fileInput.files[0]) formData.append('qr_image', fileInput.files[0]);
+            if (payload) formData.append('payload', payload);
+
+            fetch('/scan_qr', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => renderResult(data))
+            .catch(() => alert('Failed to decode QR code.'));
+        }
+
+        function renderResult(data) {
+            let result = document.getElementById('result');
+            let statusBg = data.score <= 3 ? "bg-emerald-50 text-emerald-800 border-emerald-200" : (data.score <= 7 ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-red-50 text-red-800 border-red-200");
+            let badge = data.score <= 3 ? "Verified Safe" : (data.score <= 7 ? "Medium Warning" : "Dangerous Fraud");
+
+            result.innerHTML = `
+                <div class="card-white p-6 border ${statusBg}">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/80 mb-4 gap-2">
+                        <div>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Classification Result</span>
+                            <h3 class="text-xl font-extrabold text-slate-900">${data.result} (${badge})</h3>
                         </div>
-
-                        <!-- Real-Time Threat Intelligence Badges -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                            <div class="p-3 rounded-xl bg-white border border-slate-200 flex items-center gap-2 text-xs">
-                                <span class="w-2 h-2 rounded-full ${data.virustotal && data.virustotal.flagged ? 'bg-red-500' : 'bg-emerald-500'}"></span>
-                                <span class="font-bold text-slate-700">VirusTotal Engine:</span>
-                                <span class="text-slate-500 font-mono text-[11px] truncate">${vtDetail}</span>
-                            </div>
-                            <div class="p-3 rounded-xl bg-white border border-slate-200 flex items-center gap-2 text-xs">
-                                <span class="w-2 h-2 rounded-full ${data.safebrowsing && data.safebrowsing.flagged ? 'bg-red-500' : 'bg-emerald-500'}"></span>
-                                <span class="font-bold text-slate-700">Google Safe Browsing:</span>
-                                <span class="text-slate-500 font-mono text-[11px] truncate">${sbDetail}</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Detection Findings</h4>
-                            <p class="text-xs font-mono bg-white p-3 rounded-xl border border-slate-200 text-slate-700">${data.reason}</p>
-                        </div>
-
-                        <div class="mb-4">
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Actionable Safety Guidance</h4>
-                            <div class="p-3 bg-white/90 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800">
-                                💡 ${advice}
-                            </div>
-                        </div>
-
-                        <div class="pt-3 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                            <span class="text-slate-500">Need emergency help? Call <b>National Cyber Helpline 1930</b></span>
-                            <button onclick="reportScam('${url}', 'URL')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-full text-xs transition-colors shadow">
-                                🚩 Report Phishing URL to Community
-                            </button>
+                        <div class="text-right">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Threat Score</span>
+                            <div class="text-2xl font-extrabold font-mono text-slate-900">${data.score} <span class="text-xs font-normal text-slate-400">/ 25</span></div>
                         </div>
                     </div>
-                `;
-            });
-        }
 
-        function reportScam(inputData, type) {
-            fetch('/report_scam', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: inputData, type: type, reason: 'Reported by user via Scanner Console' })
-            })
-            .then(res => res.json())
-            .then(res => alert(res.message || 'Report submitted!'))
-            .catch(() => alert('Failed to submit report.'));
-        }
+                    <div class="mb-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Extraction Findings</h4>
+                        <p class="text-xs font-mono bg-white p-3 rounded-xl border border-slate-200 text-slate-700">${data.reason || data.findings}</p>
+                    </div>
 
+                    <div class="p-3 bg-white/90 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800">
+                        💡 ${data.advice || "Verify all extracted payment details before confirming transactions."}
+                    </div>
+                </div>
+            `;
         function toggleFloatingChat() {
             let modal = document.getElementById('floatingChatModal');
             if (modal) modal.classList.toggle('hidden');
@@ -291,7 +310,7 @@
                 let el = document.getElementById(loadingId);
                 if (el) el.remove();
                 let formatted = data.reply.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-                container.innerHTML += `<div class="text-left"><div class="bg-white p-3 rounded-2xl border border-slate-200 text-xs text-slate-800 leading-relaxed shadow-sm">${formatted}</div></div>`;
+                container.innerHTML += `<div class="text-left"><div class="bg-[#ffffff] p-3 rounded-2xl border border-slate-200 text-xs text-slate-800 leading-relaxed shadow-sm">${formatted}</div></div>`;
                 container.scrollTop = container.scrollHeight;
             })
             .catch(() => {

@@ -1,0 +1,22 @@
+{
+  "name": "ScamShield Mobile - Cyber Security Guard",
+  "short_name": "ScamShield",
+  "description": "Real-time AI fraud detection, UPI threat scanner, and cybercrime protection for Android.",
+  "start_url": "/mobile",
+  "display": "standalone",
+  "background_color": "#14532d",
+  "theme_color": "#14532d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/929/929428.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/929/929428.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

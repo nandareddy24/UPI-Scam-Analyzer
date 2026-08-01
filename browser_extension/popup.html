@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScamShield Protection</title>
+    <style>
+        body {
+            width: 320px;
+            margin: 0;
+            padding: 16px;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            items-center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 16px;
+            color: #14532d;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 12px;
+        }
+        .url-box {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            word-break: break-all;
+            background-color: #f1f5f9;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-top: 6px;
+        }
+        .btn-primary {
+            width: 100%;
+            background-color: #14532d;
+            color: #ffffff;
+            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            box-shadow: 0 2px 8px rgba(20, 83, 45, 0.2);
+            box-sizing: border-box;
+        }
+        .btn-primary:hover {
+            background-color: #166534;
+        }
+        .input-group {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .input-text {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        .btn-scan {
+            background-color: #047857;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="brand">
+            <span>🛡️</span>
+            <span>ScamShield</span>
+        </div>
+        <div class="status-badge">
+            <span>●</span>
+            <span>Real-Time Guard Active</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active Page Inspection</div>
+        <div id="currentUrlDisplay" class="url-box">Scanning active tab...</div>
+        <div id="verdictStatus" style="font-size: 12px; font-weight: 700; color: #047857; margin-top: 8px;">
+            ✅ Safe Connection
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Quick URL / UPI Check</div>
+        <div class="input-group">
+            <input type="text" id="quickInput" placeholder="Enter URL or UPI handle" class="input-text">
+            <button id="quickCheckBtn" class="btn-scan">Check</button>
+        </div>
+        <div id="quickResult" style="font-size: 11px; margin-top: 6px; font-weight: 600;"></div>
+    </div>
+
+    <a href="http://127.0.0.1:5000/dashboard" target="_blank" class="btn-primary">
+        🚀 Open ScamShield Dashboard
+    </a>
+
+    <script src="popup.js"></script>
+</body>
+</html>

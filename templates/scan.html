@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Security Scan Hub - Scam Shield AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #eef1f5;
+            color: #1e293b;
+        }
+        .sidebar-item {
+            transition: all 0.2s ease;
+        }
+        .sidebar-item:hover {
+            color: #14532d;
+            background-color: #f1f5f9;
+        }
+        .sidebar-item.active {
+            background-color: #14532d;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .card-white {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            border-radius: 20px;
+        }
+        .scan-tab {
+            transition: all 0.2s ease;
+        }
+        .scan-tab.selected {
+            border-color: #059669;
+            background-color: #ecfdf5;
+            color: #047857;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+    </style>
+</head>
+<body class="p-2 md:p-4 h-screen flex justify-center items-center overflow-hidden">
+
+    <!-- Main Outer Container Frame -->
+    <div class="w-full max-w-[1440px] h-[calc(100vh-2rem)] max-h-[920px] min-h-[550px] bg-white rounded-[28px] shadow-2xl border border-slate-200/80 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Left Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-100 p-6 flex flex-col justify-between flex-shrink-0 h-full overflow-y-auto">
+            <div>
+                <!-- Brand Header -->
+                <div class="flex items-center gap-3 mb-8 px-2">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-xl shadow-sm border border-emerald-200">
+                        <svg class="w-6 h-6 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-extrabold tracking-tight text-slate-800">Scam Shield</span>
+                </div>
+
+                <!-- Navigation Menu -->
+                <div class="mb-6">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-3">MENU</p>
+                    <nav class="space-y-1">
+                        <a href="/dashboard" class="sidebar-item text-slate-600 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                            <span>Dashboard</span>
+                        </a>
+
+                        <a href="/scan" class="sidebar-item active flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                            <span>Scan Hub</span>
+                        </a>
+
+                        <a href="/report" class="sidebar-item text-slate-600 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>Report Scam</span>
+                        </a>
+
+                        <a href="/history" class="sidebar-item text-slate-600 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <span>Scan History</span>
+                        </a>
+
+                        {% if user == "nandakumarreddy63@gmail.com" %}
+                        <a href="/admin" class="sidebar-item text-slate-600 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            </svg>
+                            <span>Admin Panel</span>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+
+                <!-- Navigation Section: GENERAL -->
+                <div class="mb-6">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-3">GENERAL</p>
+                    <nav class="space-y-1">
+                        <a href="/logout" class="sidebar-item text-red-600 hover:bg-red-50 flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            <span>Logout</span>
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content View Area -->
+        <main class="flex-1 bg-[#f8fafc] p-6 md:p-8 overflow-y-auto h-full">
+            
+            <!-- Header Bar -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Security Scan Hub</h1>
+                    <p class="text-slate-500 text-xs mt-1">Cross-examine UPI IDs, Phone Numbers, URLs, SMS messages, Screenshots, or QR codes.</p>
+                </div>
+
+                <div class="flex items-center gap-2.5 bg-white border border-slate-200 p-1.5 pr-4 rounded-full shadow-sm">
+                    <div class="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs uppercase">
+                        {{ user[0] if user else 'U' }}
+                    </div>
+                    <div class="text-left">
+                        <p class="text-xs font-bold text-slate-800 leading-tight max-w-[120px] truncate">{{ user }}</p>
+                        <p class="text-[10px] text-emerald-700 font-semibold">Active User</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scanner Box Card -->
+            <div class="max-w-4xl mx-auto space-y-6">
+
+                <div class="card-white p-6 md:p-8">
+                    <!-- Scanner Selection Tabs -->
+                    <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-6">
+                        <button type="button" onclick="switchScanTab('UPI')" id="scanTab-UPI" class="scan-tab selected border-2 border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1 font-bold text-xs text-slate-700 hover:border-emerald-500">
+                            <span class="text-xl">💳</span>
+                            <span>UPI ID</span>
+                        </button>
+                        <button type="button" onclick="switchScanTab('PHONE')" id="scanTab-PHONE" class="scan-tab border-2 border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1 font-bold text-xs text-slate-700 hover:border-emerald-500">
+                            <span class="text-xl">📞</span>
+                            <span>Phone</span>
+                        </button>
+                        <button type="button" onclick="switchScanTab('URL')" id="scanTab-URL" class="scan-tab border-2 border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1 font-bold text-xs text-slate-700 hover:border-emerald-500">
+                            <span class="text-xl">🔗</span>
+                            <span>URL</span>
+                        </button>
+                        <button type="button" onclick="switchScanTab('SMS')" id="scanTab-SMS" class="scan-tab border-2 border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1 font-bold text-xs text-slate-700 hover:border-emerald-500">
+                            <span class="text-xl">💬</span>
+                            <span>SMS</span>
+                        </button>
+                        <button type="button" onclick="switchScanTab('OCR')" id="scanTab-OCR" class="scan-tab border-2 border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1 font-bold text-xs text-slate-700 hover:border-emerald-500">
+                            <span class="text-xl">📷</span>
+                            <span>Screenshot</span>
+                        </button>
+                        <button type="button" onclick="switchScanTab('QR')" id="scanTab-QR" class="scan-tab border-2 border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1 font-bold text-xs text-slate-700 hover:border-emerald-500">
+                            <span class="text-xl">📱</span>
+                            <span>QR Code</span>
+                        </button>
+                    </div>
+
+                    <!-- Input Section -->
+                    <div id="scanFormContainer">
+                        <!-- Text Input Form -->
+                        <div id="textInputBlock" class="space-y-4">
+                            <label id="scanInputLabel" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Target UPI Handle / VPA</label>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <input type="text" id="scanTextPayload" placeholder="e.g. scamuser@ybl or pay-cashback@paytm" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors">
+                                <button type="button" onclick="executeScan()" id="scanActionBtn" class="bg-[#14532d] hover:bg-[#166534] text-white font-bold px-6 py-3 rounded-xl text-xs transition-colors shadow flex items-center justify-center gap-2">
+                                    <span>🔍 Run Security Scan</span>
+                                </button>
+                            </div>
+
+                            <!-- Shortcuts -->
+                            <div id="examplesRow" class="flex flex-wrap items-center gap-2 text-xs pt-1">
+                                <span class="text-slate-400 font-semibold">Test Examples:</span>
+                                <button type="button" onclick="setScanValue('scamuser@ybl')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px]">scamuser@ybl</button>
+                                <button type="button" onclick="setScanValue('pay-cash-reward@paytm')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px]">pay-cash-reward@paytm</button>
+                                <button type="button" onclick="setScanValue('merchant.shop@okicici')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px]">merchant.shop@okicici</button>
+                            </div>
+                        </div>
+
+                        <!-- Image File Upload Block -->
+                        <div id="fileUploadBlock" class="hidden space-y-4">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload Screenshot or QR Image</label>
+                            <div class="border-2 border-dashed border-slate-300 hover:border-emerald-600 rounded-2xl p-6 text-center bg-slate-50 cursor-pointer">
+                                <input type="file" id="scanFile" accept="image/*" class="hidden" onchange="previewScanFile(this)">
+                                <label for="scanFile" class="cursor-pointer block">
+                                    <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                    </svg>
+                                    <span id="scanFileName" class="text-xs font-semibold text-slate-600 block">Drag & drop or click to upload screenshot / QR (.png, .jpg)</span>
+                                </label>
+                            </div>
+
+                            <!-- Live Image Preview Container -->
+                            <div id="imgPreviewBox" class="hidden p-3 bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-4">
+                                <img id="imgPreviewThumb" class="w-16 h-16 object-cover rounded-lg border border-slate-300 shadow-sm" src="#" alt="Uploaded image preview">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800" id="imgPreviewTitle">Image Ready for Inspection</p>
+                                    <p class="text-[11px] text-slate-500">OCR & QR decoder will extract VPA, URLs, and payment links.</p>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="executeScan()" class="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 rounded-xl text-xs transition-colors shadow">
+                                🔍 Scan Uploaded Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Threat Verdict Output -->
+                <div id="scanResultOutput"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentMode = 'UPI';
+
+        const configs = {
+            'UPI': {
+                label: 'Target UPI Handle / VPA',
+                placeholder: 'e.g. scamuser@ybl or pay-cashback@paytm',
+                type: 'text',
+                examples: [
+                    { label: 'scamuser@ybl', val: 'scamuser@ybl' },
+                    { label: 'pay-cash-reward@paytm', val: 'pay-cash-reward@paytm' },
+                    { label: 'merchant.shop@okicici', val: 'merchant.shop@okicici' }
+                ]
+            },
+            'PHONE': {
+                label: 'Target Phone Number (10 Digits)',
+                placeholder: 'e.g. 9876543210 or 8901234567',
+                type: 'text',
+                examples: [
+                    { label: '9876543210', val: '9876543210' },
+                    { label: '9123456789', val: '9123456789' }
+                ]
+            },
+            'URL': {
+                label: 'Target Website URL / Domain',
+                placeholder: 'e.g. http://login-verify-bank.com',
+                type: 'text',
+                examples: [
+                    { label: 'http://login-verify-bank.com', val: 'http://login-verify-bank.com' },
+                    { label: 'http://bit.ly/scam-claim123', val: 'http://bit.ly/scam-claim123' },
+                    { label: 'https://google.com', val: 'https://google.com' }
+                ]
+            },
+            'SMS': {
+                label: 'Suspicious SMS Text Message Content',
+                placeholder: 'e.g. "Dear customer, your SBI account is suspended. Click link immediately."',
+                type: 'text',
+                examples: [
+                    { label: 'Suspicious Phishing SMS', val: 'Dear customer, your bank account is suspended. Click http://bit.ly/scam123 to verify immediately.' },
+                    { label: 'Legitimate Order OTP', val: 'Your OTP for order verification is 482910. Valid for 5 mins.' }
+                ]
+            },
+            'OCR': {
+                type: 'file',
+                label: 'Upload Payment Screenshot or Chat Image'
+            },
+            'QR': {
+                type: 'file',
+                label: 'Upload QR Image'
+            }
+        };
+
+        function switchScanTab(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.scan-tab').forEach(t => t.classList.remove('selected'));
+            document.getElementById('scanTab-' + mode).classList.add('selected');
+
+            const cfg = configs[mode];
+            const textBlock = document.getElementById('textInputBlock');
+            const fileBlock = document.getElementById('fileUploadBlock');
+
+            if (cfg.type === 'file') {
+                textBlock.classList.add('hidden');
+                fileBlock.classList.remove('hidden');
+            } else {
+                fileBlock.classList.add('hidden');
+                textBlock.classList.remove('hidden');
+                document.getElementById('scanInputLabel').textContent = cfg.label;
+                document.getElementById('scanTextPayload').placeholder = cfg.placeholder;
+
+                const exRow = document.getElementById('examplesRow');
+                let html = '<span class="text-slate-400 font-semibold">Test Examples:</span>';
+                cfg.examples.forEach(ex => {
+                    html += `<button type="button" onclick="setScanValue('${ex.val}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px]">${ex.label}</button>`;
+                });
+                exRow.innerHTML = html;
+            }
+        }
+
+        function setScanValue(val) {
+            document.getElementById('scanTextPayload').value = val;
+        }
+
+        function previewScanFile(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                document.getElementById('scanFileName').textContent = file.name;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imgPreviewThumb').src = e.target.result;
+                    document.getElementById('imgPreviewTitle').textContent = file.name;
+                    document.getElementById('imgPreviewBox').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function executeScan() {
+            const resultDiv = document.getElementById('scanResultOutput');
+            resultDiv.innerHTML = `
+                <div class="card-white p-6 text-center text-slate-600 font-medium">
+                    <svg class="animate-spin h-7 w-7 text-emerald-700 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="font-bold text-slate-800">Analyzing threat vectors...</p>
+                    <p class="text-xs text-slate-400 mt-1">Cross-referencing ML vector engines and National CyberCrime Database</p>
+                </div>
+            `;
+
+            if (currentMode === 'UPI') {
+                let upi = document.getElementById('scanTextPayload').value.trim();
+                if (!upi) return alert('Please enter a UPI ID.');
+                fetch('/check_upi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ upi: upi })
+                }).then(r => r.json()).then(renderResult).catch(err => {
+                    resultDiv.innerHTML = `<div class="card-white p-4 border-l-4 border-l-red-500 text-xs text-red-600 font-bold">Error: ${err.message || 'Failed to complete scan.'}</div>`;
+                });
+            } else if (currentMode === 'PHONE') {
+                let phone = document.getElementById('scanTextPayload').value.trim();
+                if (!phone) return alert('Please enter a Phone Number.');
+                fetch('/check_phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone })
+                }).then(r => r.json()).then(renderResult).catch(err => {
+                    resultDiv.innerHTML = `<div class="card-white p-4 border-l-4 border-l-red-500 text-xs text-red-600 font-bold">Error: ${err.message || 'Failed to complete scan.'}</div>`;
+                });
+            } else if (currentMode === 'URL') {
+                let url = document.getElementById('scanTextPayload').value.trim();
+                if (!url) return alert('Please enter a URL.');
+                fetch('/check_url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                }).then(r => r.json()).then(renderResult).catch(err => {
+                    resultDiv.innerHTML = `<div class="card-white p-4 border-l-4 border-l-red-500 text-xs text-red-600 font-bold">Error: ${err.message || 'Failed to complete scan.'}</div>`;
+                });
+            } else if (currentMode === 'SMS') {
+                let sms = document.getElementById('scanTextPayload').value.trim();
+                if (!sms) return alert('Please enter SMS text.');
+                fetch('/check_sms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sms: sms })
+                }).then(r => r.json()).then(renderResult).catch(err => {
+                    resultDiv.innerHTML = `<div class="card-white p-4 border-l-4 border-l-red-500 text-xs text-red-600 font-bold">Error: ${err.message || 'Failed to complete scan.'}</div>`;
+                });
+            } else if (currentMode === 'OCR') {
+                let fileInput = document.getElementById('scanFile');
+                if (!fileInput.files[0]) return alert('Please select a screenshot file.');
+                let formData = new FormData();
+                formData.append('screenshot', fileInput.files[0]);
+                fetch('/scan_ocr', { method: 'POST', body: formData }).then(r => r.json()).then(renderResult).catch(err => {
+                    resultDiv.innerHTML = `<div class="card-white p-4 border-l-4 border-l-red-500 text-xs text-red-600 font-bold">Error: ${err.message || 'Failed to complete scan.'}</div>`;
+                });
+            } else if (currentMode === 'QR') {
+                let fileInput = document.getElementById('scanFile');
+                let formData = new FormData();
+                if (fileInput.files[0]) formData.append('qr_image', fileInput.files[0]);
+                fetch('/scan_qr', { method: 'POST', body: formData }).then(r => r.json()).then(renderResult).catch(err => {
+                    resultDiv.innerHTML = `<div class="card-white p-4 border-l-4 border-l-red-500 text-xs text-red-600 font-bold">Error: ${err.message || 'Failed to complete scan.'}</div>`;
+                });
+            }
+        }
+
+        function renderResult(data) {
+            const resultDiv = document.getElementById('scanResultOutput');
+            
+            let isDanger = data.score > 7 || data.status === 'Dangerous' || data.result === 'Dangerous';
+            let isWarn = data.score > 3 || data.status === 'Warning' || data.result === 'Warning';
+            
+            let borderClass = isDanger ? 'border-l-red-600' : (isWarn ? 'border-l-amber-500' : 'border-l-emerald-600');
+            let badgeClass = isDanger ? 'bg-red-100 text-red-800 border-red-300' : (isWarn ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300');
+            let badgeText = isDanger ? 'CRITICAL THREAT' : (isWarn ? 'SUSPICIOUS WARNING' : 'VERIFIED SAFE');
+
+            let confidence = Math.min(99, Math.max(85, 100 - ((data.score || 0) * 3)));
+            let advice = data.advice || (isDanger ? 'Do NOT enter PIN or click links. Report to 1930 Helpline.' : 'No immediate threat detected. Maintain security vigilance.');
+
+            resultDiv.innerHTML = `
+                <div class="card-white p-6 border-l-4 ${borderClass}">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                            <h3 class="text-xl font-bold text-slate-900 mt-2">${data.result || 'Scan Verdict'}</h3>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="text-right">
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Confidence</span>
+                                <div class="text-lg font-bold text-emerald-700">${confidence}%</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Threat Score</span>
+                                <div class="text-2xl font-extrabold text-slate-900">${data.score || 0} <span class="text-xs font-normal text-slate-400">/ 25</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">AI Detection Findings</h4>
+                        <p class="text-xs font-medium bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-800">${data.reason || data.findings || 'Target payload analyzed cleanly.'}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Actionable Safety Guidance</h4>
+                        <div class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 text-xs font-semibold text-slate-800">
+                            💡 ${advice}
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <span class="text-slate-500">Need emergency help? Call <b>National Cyber Helpline 1930</b></span>
+                        <div class="flex items-center gap-2">
+                            <a href="/report" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-full text-xs transition-colors shadow">
+                                🚩 Report as Scam
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

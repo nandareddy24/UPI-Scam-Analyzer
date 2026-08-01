@@ -1,163 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Scam Shield AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-
-        body{
-            overflow: hidden;
-            background: linear-gradient(135deg,#0f172a,#1d4ed8,#38bdf8);
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #eef1f5;
         }
-
-        /* Floating animation */
-        @keyframes float {
-            0%{
-                transform: translateY(0px);
-            }
-            50%{
-                transform: translateY(-10px);
-            }
-            100%{
-                transform: translateY(0px);
-            }
+        .card-white {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border-radius: 24px;
         }
-
-        .floating{
-            animation: float 3s ease-in-out infinite;
-        }
-
-        /* Glassmorphism */
-        .glass{
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255,255,255,0.15);
-        }
-
-        /* 3D hover effect */
-        .card-3d{
-            transition: all 0.4s ease;
-            transform-style: preserve-3d;
-        }
-
-        .card-3d:hover{
-            transform: rotateY(6deg) rotateX(4deg) scale(1.02);
-            box-shadow: 0 30px 40px rgba(0,0,0,0.35);
-        }
-
-        /* Glow effect */
-        .glow{
-            box-shadow: 0 0 25px rgba(59,130,246,0.6);
-        }
-
-        /* Input animation */
-        .input-box{
-            transition: 0.3s;
-        }
-
-        .input-box:focus{
-            transform: scale(1.02);
-        }
-
-        /* Blur circles */
-        .circle{
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(90px);
-            opacity: 0.3;
-        }
-
     </style>
-
 </head>
+<body class="min-h-screen flex items-center justify-center p-4">
 
-<body class="flex items-center justify-center h-screen relative text-white">
-
-    <!-- Background Effects -->
-    <div class="circle bg-blue-400 w-96 h-96 top-0 left-0"></div>
-    <div class="circle bg-cyan-300 w-96 h-96 bottom-0 right-0"></div>
-
-    <!-- Login Card -->
-    <div class="glass card-3d p-10 rounded-3xl shadow-2xl w-[420px] relative z-10">
-
-        <!-- Logo -->
-        <div class="text-center mb-6">
-
-            <div class="text-6xl mb-3 floating">
-                🔐
+    <div class="w-full max-w-md">
+        <!-- Logo & Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 mb-3 shadow-sm border border-emerald-200">
+                <svg class="w-7 h-7 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
             </div>
-
-            <h2 class="text-4xl font-bold">
-                Welcome Back
-            </h2>
-
-            <p class="text-blue-100 mt-2">
-                Login to continue secure scam detection
-            </p>
-
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Scam Shield</h1>
+            <p class="text-slate-500 text-xs mt-1">UPI & Cyber Fraud Intelligence Platform</p>
         </div>
 
-        <!-- Form -->
-        <form method="POST" class="space-y-5">
-
-            <!-- Email -->
-            <div>
-                <input 
-                    type="email"
-                    name="email"
-                    placeholder="Enter Email"
-                    required
-                    class="input-box w-full p-4 rounded-xl bg-white/90 text-black border-none outline-none shadow"
-                >
+        <!-- Login Card -->
+        <div class="card-white p-8">
+            <div class="mb-6">
+                <h2 class="text-xl font-extrabold text-slate-900">Sign In to Account</h2>
+                <p class="text-slate-500 text-xs mt-1">Enter your credentials to access security analysis tools.</p>
             </div>
 
-            <!-- Password -->
-            <div>
-                <input 
-                    type="password"
-                    name="password"
-                    placeholder="Enter Password"
-                    required
-                    class="input-box w-full p-4 rounded-xl bg-white/90 text-black border-none outline-none shadow"
-                >
+            <form method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Email Address</label>
+                    <input type="email" name="email" placeholder="name@example.com" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-700">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Password</label>
+                        <a href="/forgot" class="text-xs font-semibold text-emerald-700 hover:underline">Forgot?</a>
+                    </div>
+                    <input type="password" name="password" placeholder="••••••••" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-700">
+                </div>
+
+                <button type="submit" class="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 px-4 rounded-full text-xs tracking-wide transition-colors shadow">
+                    Sign In to Dashboard →
+                </button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-500">
+                    Don't have an account? 
+                    <a href="/register" class="text-emerald-700 font-bold hover:underline ml-1">Create Account</a>
+                </p>
             </div>
-
-            <!-- Login Button -->
-            <button 
-                type="submit"
-                class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white py-3 rounded-xl font-bold text-lg shadow-xl hover:scale-105 transition duration-300 glow"
-            >
-                🚀 Login
-            </button>
-
-        </form>
-
-        <!-- Divider -->
-        <div class="flex items-center my-6">
-            <div class="flex-1 h-px bg-blue-200"></div>
-            <span class="px-3 text-blue-100 text-sm">
-                Secure Access
-            </span>
-            <div class="flex-1 h-px bg-blue-200"></div>
         </div>
-
-        <!-- Links -->
-        <div class="text-center space-y-3">
-
-            <a href="/register"
-               class="block text-white hover:text-cyan-200 transition font-medium">
-                📝 Create Account
-            </a>
-
-            <a href="/forgot"
-               class="block text-red-200 hover:text-red-300 transition font-medium">
-                🔑 Forgot Password?
-            </a>
-
-        </div>
-
     </div>
 
 </body>
