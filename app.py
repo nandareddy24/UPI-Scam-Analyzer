@@ -462,7 +462,7 @@ def register():
         confirm = request.form['confirm']
 
         if password != confirm:
-            return "Passwords do not match ❌"
+            return render_template("register.html", error="Passwords do not match. Please re-enter your password.")
 
         cursor.execute(
             "SELECT * FROM users WHERE email=%s",
@@ -472,7 +472,7 @@ def register():
         existing = cursor.fetchone()
 
         if existing:
-            return "Email already registered ❌"
+            return render_template("register.html", error="This email is already registered. Please sign in instead.")
 
         otp = str(random.randint(100000, 999999))
         expiry = time.time() + 600  # 10 minutes TTL
@@ -581,7 +581,7 @@ def login():
         user = cursor.fetchone()
 
         if not user:
-            return "User not found ❌"
+            return render_template("login.html", error="No account found with this email. Please register first.")
 
         stored = user[3]
 
@@ -601,7 +601,7 @@ def login():
                 session['user'] = email
                 return redirect('/dashboard')
 
-            return "Invalid Password ❌"
+            return render_template("login.html", error="Incorrect password. Please try again.")
 
         except Exception as e:
             print("Login Error:", e)
@@ -635,7 +635,7 @@ def forgot():
         user = cursor.fetchone()
 
         if not user:
-            return "Email not found ❌"
+            return render_template("forgot.html", error="This email address is not registered yet. Please create an account first.")
 
         otp = str(random.randint(100000, 999999))
         expiry = time.time() + 600  # 10 minutes TTL
