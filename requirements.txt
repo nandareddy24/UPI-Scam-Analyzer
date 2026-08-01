@@ -22,5 +22,6 @@ python-dotenv
 resend
 
 opencv-python-headless
+Pillow
 Jinja2
 Werkzeug
