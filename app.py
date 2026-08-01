@@ -387,10 +387,41 @@ def generate_otp_email_html(otp_code, action_name="Account Registration"):
 
 def send_email(to_email, subject, body, html_content=None):
     """
-    Sends an email using Resend API (HTTPS port 443, cloud friendly) or SMTP fallback.
+    Sends an email using Brevo API (Sends to ANY recipient address free over HTTPS), Resend API, or SMTP.
     Returns True if sent successfully, False otherwise.
     """
-    # 1. Try Resend API first if configured (Works on cloud platforms like Render without port blocks)
+    # 1. Try Brevo API (Sendinblue) - Sends to ANY recipient email address over HTTPS without domain verification
+    brevo_key = os.getenv("BREVO_API_KEY")
+    if brevo_key:
+        clean_brevo_key = brevo_key.strip().strip("'").strip('"')
+        if clean_brevo_key:
+            try:
+                url = "https://api.brevo.com/v3/smtp/email"
+                headers = {
+                    "api-key": clean_brevo_key,
+                    "content-type": "application/json",
+                    "accept": "application/json"
+                }
+                sender = os.getenv("SENDER_EMAIL", "nandareddylinkdin@gmail.com")
+                payload = {
+                    "sender": {"name": "Scam Shield AI", "email": sender},
+                    "to": [{"email": to_email}],
+                    "subject": subject,
+                    "textContent": body
+                }
+                if html_content:
+                    payload["htmlContent"] = html_content
+
+                resp = requests.post(url, json=payload, headers=headers, timeout=10)
+                if resp.status_code in [200, 201, 202]:
+                    print(f"[OK] OTP Email sent via Brevo API to {to_email}", flush=True)
+                    return True
+                else:
+                    print(f"[WARN] Brevo Email Error ({resp.status_code}): {resp.text}", flush=True)
+            except Exception as e:
+                print(f"[WARN] Brevo Email Exception: {str(e)}", flush=True)
+
+    # 2. Try Resend API
     api_key = os.getenv("RESEND_API_KEY")
     if api_key:
         clean_api_key = api_key.strip().strip("'").strip('"')
