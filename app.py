@@ -387,64 +387,66 @@ def generate_otp_email_html(otp_code, action_name="Account Registration"):
 
 def send_email(to_email, subject, body, html_content=None):
     """
-    Sends an email using SMTP (e.g. Gmail App Password, Outlook) or Resend API fallback.
-    Supports both Port 465 (SSL) and Port 587 (TLS) for cloud hosting environments (Render).
+    Sends an email using Resend API (HTTPS port 443, cloud friendly) or SMTP fallback.
+    Returns True if sent successfully, False otherwise.
     """
+    # 1. Try Resend API first if configured (Works on cloud platforms like Render without port blocks)
+    api_key = os.getenv("RESEND_API_KEY")
+    if api_key:
+        clean_api_key = api_key.strip().strip("'").strip('"')
+        if clean_api_key and not clean_api_key.startswith("e_your_api_key"):
+            try:
+                resend.api_key = clean_api_key
+                payload = {
+                    "from": "Scam Shield AI <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": subject,
+                    "text": body
+                }
+                if html_content:
+                    payload["html"] = html_content
+
+                resend.Emails.send(payload)
+                print(f"[OK] OTP Email sent via Resend API to {to_email}", flush=True)
+                return True
+            except Exception as e:
+                print(f"[WARN] Resend Email Error: {str(e)}", flush=True)
+
+    # 2. Try SMTP fallback
     smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
     sender_email = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")
 
     if sender_email and sender_password:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"Scam Shield AI <{sender_email}>"
-        msg["To"] = to_email
-        msg.attach(MIMEText(body, "plain"))
-        if html_content:
-            msg.attach(MIMEText(html_content, "html"))
+        # Try SSL 465 first, then TLS 587
+        for use_ssl in [True, False]:
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = f"Scam Shield AI <{sender_email}>"
+                msg["To"] = to_email
+                msg.attach(MIMEText(body, "plain"))
+                if html_content:
+                    msg.attach(MIMEText(html_content, "html"))
 
-        # 1. Try Port 465 SSL directly (works reliably on cloud hosts like Render)
-        try:
-            with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
-                server.login(sender_email, sender_password)
-                server.sendmail(sender_email, to_email, msg.as_string())
-            print(f"[OK] OTP Email sent via SMTP_SSL (Port 465) to {to_email}", flush=True)
-            return True
-        except Exception as err465:
-            print(f"[WARN] SMTP_SSL Port 465 failed ({err465}), trying Port 587 TLS...", flush=True)
+                if use_ssl:
+                    with smtplib.SMTP_SSL(smtp_server, 465, timeout=5) as server:
+                        server.login(sender_email, sender_password)
+                        server.sendmail(sender_email, to_email, msg.as_string())
+                else:
+                    with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as server:
+                        server.starttls()
+                        server.login(sender_email, sender_password)
+                        server.sendmail(sender_email, to_email, msg.as_string())
 
-        # 2. Fallback to Port 587 STARTTLS
-        try:
-            with smtplib.SMTP(smtp_server, 587, timeout=10) as server:
-                server.starttls()
-                server.login(sender_email, sender_password)
-                server.sendmail(sender_email, to_email, msg.as_string())
-            print(f"[OK] OTP Email sent via SMTP (Port 587) to {to_email}", flush=True)
-            return True
-        except Exception as err587:
-            print(f"[WARN] SMTP Port 587 Error: {str(err587)}", flush=True)
+                print(f"[OK] OTP Email sent via SMTP to {to_email}", flush=True)
+                return True
+            except Exception as e:
+                port_desc = "SMTP_SSL Port 465" if use_ssl else f"SMTP Port {smtp_port}"
+                print(f"[WARN] {port_desc} Error: {str(e)}", flush=True)
 
-    # 3. Try Resend API if configured
-    api_key = os.getenv("RESEND_API_KEY")
-    if api_key:
-        try:
-            resend.api_key = api_key
-            payload = {
-                "from": "Scam Shield AI <onboarding@resend.dev>",
-                "to": [to_email],
-                "subject": subject,
-                "text": body
-            }
-            if html_content:
-                payload["html"] = html_content
-
-            resend.Emails.send(payload)
-            print(f"[OK] OTP Email sent via Resend API to {to_email}", flush=True)
-            return True
-        except Exception as e:
-            print(f"[WARN] Resend Email Error: {str(e)}", flush=True)
-
-    print("[WARN] No email credentials or all SMTP options failed. Email NOT delivered.", flush=True)
+    print("[WARN] No email credentials or all options failed. Email NOT delivered.", flush=True)
     return False
 
 # ---------------- REGISTER ----------------
@@ -462,7 +464,7 @@ def register():
         confirm = request.form['confirm']
 
         if password != confirm:
-            return render_template("register.html", error="Passwords do not match. Please re-enter your password.")
+            return "Passwords do not match ❌"
 
         cursor.execute(
             "SELECT * FROM users WHERE email=%s",
@@ -472,7 +474,7 @@ def register():
         existing = cursor.fetchone()
 
         if existing:
-            return render_template("register.html", error="This email is already registered. Please sign in instead.")
+            return "Email already registered ❌"
 
         otp = str(random.randint(100000, 999999))
         expiry = time.time() + 600  # 10 minutes TTL
@@ -581,7 +583,7 @@ def login():
         user = cursor.fetchone()
 
         if not user:
-            return render_template("login.html", error="No account found with this email. Please register first.")
+            return "User not found ❌"
 
         stored = user[3]
 
@@ -601,7 +603,7 @@ def login():
                 session['user'] = email
                 return redirect('/dashboard')
 
-            return render_template("login.html", error="Incorrect password. Please try again.")
+            return "Invalid Password ❌"
 
         except Exception as e:
             print("Login Error:", e)
@@ -635,7 +637,7 @@ def forgot():
         user = cursor.fetchone()
 
         if not user:
-            return render_template("forgot.html", error="This email address is not registered yet. Please create an account first.")
+            return "Email not found ❌"
 
         otp = str(random.randint(100000, 999999))
         expiry = time.time() + 600  # 10 minutes TTL
