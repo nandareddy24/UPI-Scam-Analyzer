@@ -56,9 +56,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Determines whether the app is running on Android Emulator or a Physical Phone.
-     * - Emulator: Uses http://10.0.2.2:3000/mobile_app
-     * - Physical Phone: Uses server_url string from resources (http://<YOUR_PC_IP>:3000/mobile_app)
+     * Determines target backend URL based on device environment:
+     * - USB Physical Phone (via ADB reverse tcp:3000 tcp:3000): http://127.0.0.1:3000/mobile_app
+     * - Android Emulator: http://10.0.2.2:3000/mobile_app
      */
     private fun resolveTargetUrl(): String {
         val configuredUrl = getString(R.string.server_url)
@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <style>
                                 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: white; padding: 24px 16px; margin: 0; }
-                                .card { background: #1e293b; border-radius: 20px; padding: 28px 20px; border: 1px solid #334155; text-align: center; max-width: 480px; margin: 20px auto; shadow: 0 10px 25px rgba(0,0,0,0.5); }
+                                .card { background: #1e293b; border-radius: 20px; padding: 28px 20px; border: 1px solid #334155; text-align: center; max-width: 480px; margin: 20px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
                                 h2 { color: #f8fafc; font-size: 22px; margin-top: 0; margin-bottom: 12px; }
                                 p { color: #94a3b8; font-size: 14px; line-height: 1.5; margin: 8px 0; }
                                 .url-box { background: #0f172a; border: 1px solid #334155; padding: 10px 14px; border-radius: 10px; font-family: monospace; color: #34d399; font-size: 13px; word-break: break-all; margin: 14px 0; }
@@ -146,15 +146,14 @@ class MainActivity : AppCompatActivity() {
                         <body>
                             <div class="card">
                                 <h2>🛡️ ScamShield Offline</h2>
-                                <p>Unable to connect to the ScamShield server at:</p>
+                                <p>Unable to connect to ScamShield server at:</p>
                                 <div class="url-box">$appUrl</div>
                                 <div class="checklist">
-                                    <strong>Troubleshooting Checklist:</strong>
+                                    <strong>USB Physical Phone Setup Steps:</strong>
                                     <ol style="padding-left: 20px; margin-top: 8px; margin-bottom: 0;">
-                                        <li>Is Flask running on host? (<code>python app.py</code>)</li>
-                                        <li>Are phone and PC on the <strong>same Wi-Fi network</strong>?</li>
-                                        <li>Did you replace <code>YOUR_PC_IP</code> in <code>strings.xml</code> with your PC's IP?</li>
-                                        <li>Is port 3000 allowed in Windows Firewall?</li>
+                                        <li>Ensure Flask is running on PC: <code>python app.py</code> (Port 3000)</li>
+                                        <li>Ensure USB Debugging is ON and phone is connected.</li>
+                                        <li>Run ADB reverse command: <code>adb reverse tcp:3000 tcp:3000</code></li>
                                     </ol>
                                 </div>
                                 <button onclick="location.reload()">🔄 Retry Connection</button>
@@ -174,6 +173,30 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     progressBar.visibility = View.VISIBLE
                     progressBar.progress = newProgress
+                }
+            }
+
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                if (request == null) return
+                runOnUiThread {
+                    val requestedResources = request.resources
+                    val grantedResources = mutableListOf<String>()
+                    for (resource in requestedResources) {
+                        if (resource == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
+                            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                grantedResources.add(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+                            }
+                        } else if (resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
+                            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                grantedResources.add(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+                            }
+                        }
+                    }
+                    if (grantedResources.isNotEmpty()) {
+                        request.grant(grantedResources.toTypedArray())
+                    } else {
+                        request.deny()
+                    }
                 }
             }
 
@@ -269,7 +292,7 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
         if (!cameraGranted) {
-            Toast.makeText(this, "Camera permission recommended for QR code scanning", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Camera permission recommended for live QR code scanning", Toast.LENGTH_SHORT).show()
         }
     }
 
