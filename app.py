@@ -26,9 +26,9 @@ import requests
 import base64
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "secret123")
+app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
 
-ADMIN_EMAIL = "nandakumarreddy63@gmail.com"
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "nandakumarreddy63@gmail.com")
 
 # ---------------- DATABASE ----------------
 
@@ -962,6 +962,8 @@ def reject_report(id):
 # ---------------- DELETE BLACKLIST ----------------
 @app.route('/delete_blacklist/<int:id>', methods=['POST'])
 def delete_blacklist(id):
+    if 'user' not in session or session['user'] != ADMIN_EMAIL:
+        return redirect('/login')
 
     cursor.execute(
         "DELETE FROM blacklist WHERE id=%s",
@@ -1764,4 +1766,5 @@ def api_v1_chat():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(debug=debug_mode)
