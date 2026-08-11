@@ -1672,32 +1672,7 @@ def report_scam():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 2. Export Scan History as CSV
-@app.route('/export_data')
-def export_data():
-    if 'user' not in session:
-        return redirect('/login')
 
-    if cursor is None:
-        return "Database unavailable", 500
-
-    cursor.execute("SELECT id, type, input_data, score, result, created_at FROM scans ORDER BY id DESC")
-    rows = cursor.fetchall()
-
-    import io, csv
-    from flask import Response
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['ID', 'Type', 'Input Data', 'Risk Score', 'Classification Result', 'Timestamp'])
-    for row in rows:
-        writer.writerow(row)
-
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=scam_shield_audit_export.csv"}
-    )
 
 # 3. Developer REST API Endpoint
 @app.route('/api/v1/analyze', methods=['POST'])
