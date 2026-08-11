@@ -1741,4 +1741,7 @@ def api_v1_chat():
 # ---------------- RUN ----------------
 if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
-    app.run(debug=debug_mode)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 3000))
+    print(f"🚀 ScamShield Server running on http://0.0.0.0:{port} (Accessible on local Wi-Fi at http://<MY-PC-IP>:{port})")
+    app.run(host=host, port=port, debug=debug_mode)

@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">ScamShield</string>
-    <string name="server_url">http://10.0.2.2:5000/mobile_app</string>
+    <string name="server_url">http://10.0.2.2:3000/mobile_app</string>
     <string name="offline_message">No internet connection. Showing offline protection.</string>
 </resources>

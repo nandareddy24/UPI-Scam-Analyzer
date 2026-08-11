@@ -31,8 +31,8 @@ class MainActivity : AppCompatActivity() {
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
 
-    // Target local backend URL (10.0.2.2 points to host localhost in Android Emulator)
-    private val appUrl = "http://10.0.2.2:5000/mobile_app"
+    // Target local backend URL (10.0.2.2 points to host localhost in Android Emulator, port 3000)
+    private var appUrl = "http://10.0.2.2:3000/mobile_app"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
