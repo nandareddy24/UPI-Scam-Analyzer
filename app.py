@@ -612,20 +612,22 @@ def api_me():
 
 # ---------------- REGISTER ----------------
 @app.route('/register', methods=['GET', 'POST'])
+# ---------------- REGISTER ----------------
+@app.route('/register', methods=['GET', 'POST'])
 def register():
 
     if cursor is None:
-        return "Database connection failed ❌"
+        return render_template("register.html", error="Database connection unavailable. Please check system status.")
 
     if request.method == 'POST':
 
-        name = request.form['name']
-        email = request.form['email']
-        password = request.form['password']
-        confirm = request.form['confirm']
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
 
         if password != confirm:
-            return "Passwords do not match ❌"
+            return render_template("register.html", error="Passwords do not match. Please ensure both fields are identical.", name=name, email=email)
 
         cursor.execute(
             "SELECT * FROM users WHERE email=%s",
@@ -635,7 +637,7 @@ def register():
         existing = cursor.fetchone()
 
         if existing:
-            return "Email already registered ❌"
+            return render_template("register.html", error="This email address is already registered. Please sign in instead.", name=name, email=email)
 
         otp = str(random.randint(100000, 999999))
         expiry = time.time() + 600  # 10 minutes TTL
@@ -663,8 +665,8 @@ def register():
 @app.route('/verify_otp', methods=['POST'])
 def verify_otp():
 
-    email = request.form['email']
-    user_otp = request.form['otp']
+    email = request.form.get('email', '')
+    user_otp = request.form.get('otp', '')
 
     if email in otp_storage:
 
@@ -673,7 +675,7 @@ def verify_otp():
             otp, name, password, expiry = stored_data
             if time.time() > expiry:
                 otp_storage.pop(email, None)
-                return "OTP expired ❌ Please register again."
+                return render_template("otp.html", email=email, error="OTP expired. Please register again.")
         else:
             otp, name, password = stored_data
 
@@ -693,16 +695,16 @@ def verify_otp():
 
             otp_storage.pop(email, None)
 
-            return redirect('/login')
+            return render_template("login.html", success="Registration verified successfully! Please sign in with your credentials.", email=email)
 
-    return "Invalid OTP ❌"
+    return render_template("otp.html", email=email, error="Invalid 6-digit OTP code. Please check your email and try again.")
 
 # ---------------- VERIFY RESET OTP ----------------
 @app.route('/verify_reset_otp', methods=['POST'])
 def verify_reset_otp():
 
-    email = request.form['email']
-    otp = request.form['otp']
+    email = request.form.get('email', '')
+    otp = request.form.get('otp', '')
 
     if email in reset_otp_storage:
 
@@ -711,7 +713,7 @@ def verify_reset_otp():
             stored_otp, expiry = stored_data
             if time.time() > expiry:
                 reset_otp_storage.pop(email, None)
-                return "OTP expired ❌ Please request password reset again."
+                return render_template("reset_otp.html", email=email, error="OTP expired. Please request password reset again.")
         else:
             stored_otp = stored_data
 
@@ -722,19 +724,19 @@ def verify_reset_otp():
                 email=email
             )
 
-    return "Invalid OTP ❌"
+    return render_template("reset_otp.html", email=email, error="Invalid 6-digit OTP code. Please verify the code and try again.")
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
 
     if cursor is None:
-        return "Database connection failed ❌"
+        return render_template("login.html", error="Database connection unavailable. Please check system status.")
 
     if request.method == 'POST':
 
-        email = request.form['email']
-        password = request.form['password']
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
 
         cursor.execute(
             "SELECT * FROM users WHERE email=%s",
@@ -744,7 +746,7 @@ def login():
         user = cursor.fetchone()
 
         if not user:
-            return "User not found ❌"
+            return render_template("login.html", error="Invalid user email or account does not exist.", email=email)
 
         stored = user[3]
 
@@ -764,12 +766,11 @@ def login():
                 session['user'] = email
                 return redirect('/dashboard')
 
-            return "Invalid Password ❌"
+            return render_template("login.html", error="Incorrect password. Please verify your password and try again.", email=email)
 
         except Exception as e:
             print("Login Error:", e)
-            print("Stored Password:", stored)
-            return "Password format error ❌"
+            return render_template("login.html", error="Password verification format error. Please try again.", email=email)
 
     return render_template("login.html")
 
@@ -784,11 +785,11 @@ def logout():
 def forgot():
 
     if cursor is None:
-        return "Database connection failed ❌"
+        return render_template("forgot.html", error="Database connection unavailable. Please try again later.")
 
     if request.method == 'POST':
 
-        email = request.form['email']
+        email = request.form.get('email', '').strip().lower()
 
         cursor.execute(
             "SELECT * FROM users WHERE email=%s",
@@ -798,7 +799,7 @@ def forgot():
         user = cursor.fetchone()
 
         if not user:
-            return "Email not found ❌"
+            return render_template("forgot.html", error="Email address not found in system records.", email=email)
 
         otp = str(random.randint(100000, 999999))
         expiry = time.time() + 600  # 10 minutes TTL
@@ -828,14 +829,14 @@ def forgot():
 def update_password():
 
     if cursor is None:
-        return "Database connection failed ❌"
+        return render_template("reset_password.html", error="Database connection unavailable.")
 
-    email = request.form['email']
-    password = request.form['password']
-    confirm = request.form['confirm']
+    email = request.form.get('email', '')
+    password = request.form.get('password', '')
+    confirm = request.form.get('confirm', '')
 
     if password != confirm:
-        return "Passwords do not match ❌"
+        return render_template("reset_password.html", email=email, error="Passwords do not match. Please try again.")
 
     hashed = bcrypt.hashpw(
         password.encode('utf-8'),
@@ -851,7 +852,7 @@ def update_password():
 
     reset_otp_storage.pop(email, None)
 
-    return redirect('/login')
+    return render_template("login.html", success="Password reset successfully! Please sign in with your new password.", email=email)
 # ---------------- SCAN HUB ----------------
 @app.route('/scan')
 def scan_hub():

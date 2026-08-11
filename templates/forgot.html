@@ -19,6 +19,14 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             border-radius: 24px;
         }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -35,10 +43,23 @@
         </div>
 
         <div class="card-white p-8">
+            <!-- Error Banner Alert -->
+            {% if error %}
+            <div class="mb-6 bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm animate-shake">
+                <div class="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0 font-extrabold text-sm border border-red-200">
+                    ⚠️
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-xs font-bold text-red-800 uppercase tracking-wider">Reset Request Error</h4>
+                    <p class="text-xs font-medium text-red-600 mt-0.5 leading-relaxed">{{ error }}</p>
+                </div>
+            </div>
+            {% endif %}
+
             <form method="POST" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Registered Email</label>
-                    <input type="email" name="email" placeholder="name@example.com" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-700">
+                    <input type="email" name="email" value="{{ email if email else '' }}" placeholder="name@example.com" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-700">
                 </div>
 
                 <button type="submit" class="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 px-4 rounded-full text-xs tracking-wide transition-colors shadow">
