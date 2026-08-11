@@ -14,7 +14,7 @@ document.getElementById('scanBtn').addEventListener('click', () => {
   resDiv.style.background = '#f1f5f9';
   resDiv.innerText = 'Analyzing threat parameters...';
 
-  fetch('http://127.0.0.1:5000/api/v1/analyze', {
+  fetch('http://127.0.0.1:3000/api/v1/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: type, data: data })
@@ -34,6 +34,6 @@ document.getElementById('scanBtn').addEventListener('click', () => {
   })
   .catch(() => {
     resDiv.style.background = '#fee2e2';
-    resDiv.innerText = 'Failed to connect to Scam Shield server at 127.0.0.1:5000.';
+    resDiv.innerText = 'Failed to connect to Scam Shield server at 127.0.0.1:3000.';
   });
 });

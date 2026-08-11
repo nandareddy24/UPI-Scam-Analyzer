@@ -55,8 +55,17 @@ dependencies {
 tasks.register('adbReverse', Exec) {
     description = 'Execute ADB reverse port forwarding for USB debugging (port 3000)'
     group = 'developer'
-    commandLine 'adb', 'reverse', 'tcp:3000', 'tcp:3000'
+    
+    def sdkDir = android.sdkDirectory?.path ?: System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+    def adbExe = (sdkDir && file("$sdkDir/platform-tools/adb.exe").exists()) ? "$sdkDir/platform-tools/adb.exe" :
+                 ((sdkDir && file("$sdkDir/platform-tools/adb").exists()) ? "$sdkDir/platform-tools/adb" : "adb")
+
+    commandLine adbExe, 'reverse', 'tcp:3000', 'tcp:3000'
     ignoreExitValue = true
+
+    doLast {
+        logger.lifecycle("🔌 Attempted ADB reverse port forwarding (tcp:3000 -> tcp:3000). Ensure USB Debugging is active on your phone!")
+    }
 }
 afterEvaluate {
     tasks.findByName('installDebug')?.dependsOn('adbReverse')

@@ -9,7 +9,7 @@
 
 const { remote } = require('webdriverio');
 
-const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:5000';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const MOBILE_APP_URL = `${BASE_URL}/mobile_app`;
 
 const appiumCapabilities = {

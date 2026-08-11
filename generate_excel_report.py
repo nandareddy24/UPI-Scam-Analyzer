@@ -262,7 +262,7 @@ def create_selenium_test_report():
 
     test_case_templates = [
         # CAT 1: Authentication & Credentials (1 to 25)
-        ("Verify login page renders correctly with status code 200", "Server running at localhost:5000", "1. Open browser\n2. Navigate to /login", "None", "Page loads with 200 OK and Sign In title", "Page loaded successfully", "P0", "PASS", "Low"),
+        ("Verify login page renders correctly with status code 200", "Server running at localhost:3000", "1. Open browser\n2. Navigate to /login", "None", "Page loads with 200 OK and Sign In title", "Page loaded successfully", "P0", "PASS", "Low"),
         ("Verify email field accepts standard format user@domain.com", "On login page", "1. Focus email input\n2. Type user@domain.com", "user@domain.com", "Input displays text clearly", "Input value matched", "P1", "PASS", "Low"),
         ("Verify password input mask hides characters", "On login page", "1. Focus password input\n2. Type secret123", "secret123", "Characters rendered as dots (type=password)", "Type attribute is password", "P0", "PASS", "High"),
         ("Verify successful login with valid registered credentials", "User account exists", "1. Enter valid email\n2. Enter valid password\n3. Click Sign In", "user@example.com / Pass123", "User authenticated and redirected to /dashboard or /scan", "Redirected to dashboard", "P0", "PASS", "Critical"),

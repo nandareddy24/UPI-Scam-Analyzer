@@ -12,7 +12,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Configuration
-const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:5000';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const TIMEOUT_MS = 10000;
 const HEADLESS_MODE = process.env.HEADLESS !== 'false';
 

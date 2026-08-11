@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = tabs[0].url;
             document.getElementById('currentUrlDisplay').textContent = url;
 
-            fetch('http://127.0.0.1:5000/api/v1/extension/check_url', {
+            fetch('http://127.0.0.1:3000/api/v1/extension/check_url', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: url })
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!val) return;
 
         resDiv.textContent = "Inspecting threat...";
-        fetch('http://127.0.0.1:5000/check_url', {
+        fetch('http://127.0.0.1:3000/check_url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: val })

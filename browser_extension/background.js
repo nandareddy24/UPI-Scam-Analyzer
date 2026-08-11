@@ -1,4 +1,4 @@
-const API_ENDPOINT = "http://127.0.0.1:5000/api/v1/extension/check_url";
+const API_ENDPOINT = "http://127.0.0.1:3000/api/v1/extension/check_url";
 const safeCache = new Set();
 const threatCache = new Map();
 
@@ -17,7 +17,7 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 });
 
 async function inspectUrl(tabId, url) {
-    if (!url || url.startsWith("chrome://") || url.startsWith("edge://") || url.startsWith("about:") || url.includes("127.0.0.1:5000")) {
+    if (!url || url.startsWith("chrome://") || url.startsWith("edge://") || url.startsWith("about:") || url.includes("127.0.0.1:3000")) {
         return;
     }
 

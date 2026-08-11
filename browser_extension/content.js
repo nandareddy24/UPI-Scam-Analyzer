@@ -137,7 +137,7 @@ function injectThreatOverlay(threatData) {
     });
 
     document.getElementById("scamshield-btn-details").addEventListener("click", () => {
-        window.open("http://127.0.0.1:5000/history", "_blank");
+        window.open("http://127.0.0.1:3000/history", "_blank");
     });
 
     document.getElementById("scamshield-btn-ignore").addEventListener("click", () => {
