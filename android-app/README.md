@@ -27,20 +27,27 @@ This folder (`android-app/`) is a complete, production-ready **Android Studio pr
 
 ---
 
-### Step 3: Start your local Python Backend
-Make sure your Flask server is running locally on your computer:
-```bash
-python app.py
-```
-> 💡 **Note on Localhost IP:** Inside the Android Emulator, `http://10.0.2.2:5000` automatically connects to `http://127.0.0.1:5000` on your host PC!
-> If you are testing on a **physical Android phone connected via USB or Wi-Fi**, change `http://10.0.2.2:5000` in `app/src/main/res/values/strings.xml` to your PC's local Wi-Fi IP (e.g. `http://192.168.1.100:5000`).
+### Step 3: Start your local Python Backend & ADB Reverse
+1. Start your Flask server on host machine:
+   ```bash
+   python app.py
+   ```
+   *(Server listens on `http://127.0.0.1:3000`)*
+
+2. Connect your Android phone via USB cable and enable **USB Debugging** in Developer Options.
+
+3. Run ADB reverse port forwarding in terminal:
+   ```bash
+   adb reverse tcp:3000 tcp:3000
+   ```
+   > 💡 **Why ADB Reverse?** This forwards all requests from `http://127.0.0.1:3000` inside your phone's WebView directly to `http://127.0.0.1:3000` on your Windows PC over the USB cable! No Wi-Fi or LAN IP required.
 
 ---
 
-### Step 4: Run on Android Emulator or Physical Device
-1. In Android Studio, select your target device (e.g. **Pixel 7 API 34** emulator or connected physical Android phone) from the top toolbar device dropdown.
+### Step 4: Run on USB Physical Phone or Android Emulator
+1. In Android Studio, select your target device (e.g. your connected physical Android phone or Emulator) from the top toolbar device dropdown.
 2. Click the green **Run ▶️** button (or press `Shift + F10`).
-3. The app will build, install, and open **ScamShield** on your Android device!
+3. The app will build, install, and open the real **ScamShield** web application on your Android phone!
 
 ---
 

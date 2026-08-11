@@ -50,3 +50,14 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
+
+// Gradle helper task for USB reverse port forwarding (port 3000)
+tasks.register('adbReverse', Exec) {
+    description = 'Execute ADB reverse port forwarding for USB debugging (port 3000)'
+    group = 'developer'
+    commandLine 'adb', 'reverse', 'tcp:3000', 'tcp:3000'
+    ignoreExitValue = true
+}
+afterEvaluate {
+    tasks.findByName('installDebug')?.dependsOn('adbReverse')
+}

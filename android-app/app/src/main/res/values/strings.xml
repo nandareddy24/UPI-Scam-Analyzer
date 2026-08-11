@@ -3,17 +3,19 @@
 
     <!-- 
         ========================================================================
-        SERVER URL CONFIGURATION FOR PHYSICAL PHONE & EMULATOR
+        SERVER URL CONFIGURATION FOR USB PHYSICAL PHONE & EMULATOR
         ========================================================================
-        1. PHYSICAL PHONE (Same Wi-Fi network):
-           Replace '172.23.52.128' with your PC's IPv4 address (found via `ipconfig`).
-           Example: http://192.168.1.100:3000/mobile_app
+        1. USB PHYSICAL PHONE (via USB Cable + `adb reverse tcp:3000 tcp:3000`):
+           Use: http://127.0.0.1:3000/mobile_app
 
-        2. ANDROID EMULATOR:
-           MainActivity automatically uses 10.0.2.2 if emulator is detected.
+        2. WI-FI PHYSICAL PHONE (Same Wi-Fi network):
+           Use: http://<YOUR_PC_IP>:3000/mobile_app (e.g. http://172.23.52.128:3000/mobile_app)
+
+        3. ANDROID EMULATOR:
+           MainActivity automatically uses http://10.0.2.2:3000/mobile_app.
         ========================================================================
     -->
-    <string name="server_url">http://172.23.52.128:3000/mobile_app</string>
+    <string name="server_url">http://127.0.0.1:3000/mobile_app</string>
     <string name="emulator_server_url">http://10.0.2.2:3000/mobile_app</string>
     <string name="offline_message">Unable to connect to ScamShield server.</string>
 </resources>
