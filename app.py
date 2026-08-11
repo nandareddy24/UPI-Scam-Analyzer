@@ -1743,5 +1743,5 @@ if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", 3000))
-    print(f"🚀 ScamShield Server running on http://0.0.0.0:{port} (Accessible on local Wi-Fi at http://<MY-PC-IP>:{port})")
+    print(f"[OK] ScamShield Server running on http://0.0.0.0:{port} (Accessible on local Wi-Fi at http://<MY-PC-IP>:{port})")
     app.run(host=host, port=port, debug=debug_mode)
