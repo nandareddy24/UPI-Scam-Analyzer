@@ -71,11 +71,6 @@
                             <span>Scan Hub</span>
                         </a>
 
-                        <a href="/chatbot" class="sidebar-item  text-slate-600 flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium">
-                            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                            <span>AI Chatbot</span>
-                        </a>
-
                         <a href="/ocr_qr" class="sidebar-item active text-slate-600 flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium">
                             <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
                             <span>OCR & QR Scanner</span>
@@ -350,33 +345,5 @@
         }
     </script>
 
-    <!-- Floating ScamShield AI Chatbot Widget Button & Modal -->
-    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-        <div id="floatingChatModal" class="hidden mb-4 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[480px] transition-all">
-            <div class="bg-[#14532d] text-white p-4 flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <span class="text-xl">🤖</span>
-                    <div>
-                        <h4 class="text-xs font-bold">ScamShield Security Assistant</h4>
-                        <p class="text-[10px] text-emerald-200">Real-Time Cyber Fraud Security</p>
-                    </div>
-                </div>
-                <button onclick="toggleFloatingChat()" class="text-emerald-200 hover:text-white text-base font-bold">✕</button>
-            </div>
-            <div id="floatingChatMessages" class="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-slate-50">
-                <div class="bg-white p-3 rounded-2xl border border-slate-200 text-slate-700 shadow-sm">
-                    Hello! 👋 I am your ScamShield Security Assistant. Ask me: <i>"Is this message genuine?"</i>
-                </div>
-            </div>
-            <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
-                <input id="floatingChatInput" type="text" placeholder="Is this message genuine?..." onkeydown="if(event.key==='Enter') sendFloatingMessage()" class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-700 text-slate-800">
-                <button onclick="sendFloatingMessage()" class="bg-[#14532d] text-white px-3.5 py-2 rounded-xl font-bold text-xs hover:bg-[#166534] shadow">Ask</button>
-            </div>
-        </div>
-
-        <button onclick="toggleFloatingChat()" class="w-14 h-14 rounded-full bg-[#14532d] hover:bg-[#166534] text-white flex items-center justify-center shadow-2xl border-2 border-emerald-400 transition-all hover:scale-105 group">
-            <span class="text-2xl group-hover:rotate-12 transition-transform">🤖</span>
-        </button>
-    </div>
 </body>
 </html>
