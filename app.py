@@ -870,23 +870,41 @@ def dashboard():
     warning = 0
     danger = 0
     recent_scans = []
+    is_admin = (session['user'] == ADMIN_EMAIL)
+    uid = get_current_user_id()
 
     if cursor is not None:
         try:
-            cursor.execute("SELECT COUNT(*) FROM scans")
-            total = cursor.fetchone()[0]
+            if is_admin:
+                cursor.execute("SELECT COUNT(*) FROM scans")
+                total = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Safe'")
-            safe = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Safe'")
+                safe = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Warning'")
-            warning = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Warning'")
+                warning = cursor.fetchone()[0]
 
-            cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Dangerous'")
-            danger = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Dangerous'")
+                danger = cursor.fetchone()[0]
 
-            cursor.execute("SELECT type, input_data, score, result, created_at FROM scans ORDER BY id DESC LIMIT 5")
-            recent_scans = cursor.fetchall()
+                cursor.execute("SELECT type, input_data, score, result, created_at FROM scans ORDER BY id DESC LIMIT 5")
+                recent_scans = cursor.fetchall()
+            else:
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE user_id=%s OR user_id IS NULL", (uid,))
+                total = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Safe' AND (user_id=%s OR user_id IS NULL)", (uid,))
+                safe = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Warning' AND (user_id=%s OR user_id IS NULL)", (uid,))
+                warning = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM scans WHERE result='Dangerous' AND (user_id=%s OR user_id IS NULL)", (uid,))
+                danger = cursor.fetchone()[0]
+
+                cursor.execute("SELECT type, input_data, score, result, created_at FROM scans WHERE user_id=%s OR user_id IS NULL ORDER BY id DESC LIMIT 5", (uid,))
+                recent_scans = cursor.fetchall()
         except Exception as e:
             print("Dashboard metrics query error:", e)
 
@@ -904,7 +922,8 @@ def dashboard():
         security_score=security_score,
         threat_level=threat_level,
         last_scan=last_scan,
-        recent_scans=recent_scans
+        recent_scans=recent_scans,
+        is_admin=is_admin
     )
 # ---------------- ADMIN ----------------
 @app.route('/admin', methods=['GET','POST'])
@@ -980,18 +999,76 @@ def history():
         return redirect('/login')
 
     scans = []
+    is_admin = (session['user'] == ADMIN_EMAIL)
+    uid = get_current_user_id()
+
     if cursor is not None:
         try:
-            cursor.execute("""
-                SELECT id, type, input_data, score, result, created_at 
-                FROM scans 
-                ORDER BY id DESC
-            """)
+            if is_admin:
+                cursor.execute("""
+                    SELECT scans.id, scans.type, scans.input_data, scans.score, scans.result, scans.created_at, COALESCE(users.email, 'Anonymous')
+                    FROM scans 
+                    LEFT JOIN users ON scans.user_id = users.id
+                    ORDER BY scans.id DESC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT scans.id, scans.type, scans.input_data, scans.score, scans.result, scans.created_at, COALESCE(users.email, 'Me')
+                    FROM scans 
+                    LEFT JOIN users ON scans.user_id = users.id
+                    WHERE scans.user_id = %s OR (scans.user_id IS NULL AND %s IS NULL)
+                    ORDER BY scans.id DESC
+                """, (uid, uid))
             scans = cursor.fetchall()
         except Exception as e:
             print("History query error:", e)
 
-    return render_template("history.html", scans=scans, user=session['user'])
+    return render_template("history.html", scans=scans, user=session['user'], is_admin=is_admin)
+
+@app.route('/export_data')
+def export_data():
+    if 'user' not in session:
+        return redirect('/login')
+
+    import csv
+    import io
+    from flask import Response
+
+    is_admin = (session['user'] == ADMIN_EMAIL)
+    uid = get_current_user_id()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    if is_admin:
+        writer.writerow(['Scan Ref ID', 'Scanned By User', 'Type', 'Input Data', 'Threat Score', 'Verdict', 'Timestamp'])
+        if cursor is not None:
+            cursor.execute("""
+                SELECT scans.id, COALESCE(users.email, 'Anonymous'), scans.type, scans.input_data, scans.score, scans.result, scans.created_at
+                FROM scans
+                LEFT JOIN users ON scans.user_id = users.id
+                ORDER BY scans.id DESC
+            """)
+            for row in cursor.fetchall():
+                writer.writerow(row)
+    else:
+        writer.writerow(['Scan Ref ID', 'Type', 'Input Data', 'Threat Score', 'Verdict', 'Timestamp'])
+        if cursor is not None:
+            cursor.execute("""
+                SELECT scans.id, scans.type, scans.input_data, scans.score, scans.result, scans.created_at
+                FROM scans
+                WHERE scans.user_id = %s OR (scans.user_id IS NULL AND %s IS NULL)
+                ORDER BY scans.id DESC
+            """, (uid, uid))
+            for row in cursor.fetchall():
+                writer.writerow(row)
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=scamshield_scan_history.csv"}
+    )
 
 # ---------------- OCR & QR PAGES & API ----------------
 @app.route('/ocr_qr')
