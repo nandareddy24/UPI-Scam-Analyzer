@@ -163,9 +163,6 @@
                             <a href="/mobile" target="_blank" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-colors flex items-center gap-1.5">
                                 🚀 Launch Mobile App
                             </a>
-                            <a href="/download_android_zip" class="bg-[#14532d] hover:bg-[#166534] text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-colors flex items-center gap-1.5">
-                                📥 Download Source (.zip)
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -186,18 +183,18 @@
                         </a>
                     </div>
 
-                    <!-- Method 2: Android Studio Build -->
+                    <!-- Method 2: Android Studio Direct Sync -->
                     <div class="card-white p-6">
                         <h3 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
                             <span>🛠️</span>
-                            <span>Option 2: Build Standalone APK</span>
+                            <span>Option 2: Sync in Android Studio</span>
                         </h3>
                         <p class="text-xs text-slate-600 leading-relaxed mb-4">
-                            Download the project ZIP bundle, extract it on your PC, open Android Studio, create a new WebView project pointing to your server URL, and build the release <code class="bg-slate-100 px-2 py-0.5 rounded text-slate-800 font-mono">.apk</code> binary!
+                            Open Android Studio, select <code class="bg-slate-100 px-2 py-0.5 rounded text-slate-800 font-mono">File → Open</code>, select the <code class="bg-slate-100 px-2 py-0.5 rounded text-emerald-700 font-bold font-mono">android-app</code> folder in your project, and sync Gradle to build & run on Emulator or Device!
                         </p>
-                        <a href="/download_android_zip" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs block text-center shadow transition-colors">
-                            Download Android Source ZIP 📥
-                        </a>
+                        <div class="w-full bg-slate-100 border border-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs text-center">
+                            📁 Project Path: <code class="text-emerald-700">android-app/</code>
+                        </div>
                     </div>
                 </div>
             </div>

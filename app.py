@@ -1393,41 +1393,7 @@ def android_hub():
 
 @app.route('/download_android_zip')
 def download_android_zip():
-    if 'user' not in session:
-        return redirect('/login')
-
-    import zipfile
-    import io
-    from flask import Response
-
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    android_app_dir = os.path.join(base_dir, "android-app")
-    zip_buffer = io.BytesIO()
-
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        if os.path.exists(android_app_dir):
-            for root, dirs, files in os.walk(android_app_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, android_app_dir)
-                    zip_file.write(file_path, arcname)
-        else:
-            mobile_files = [
-                ("templates/mobile_app.html", "mobile_app.html"),
-                ("static/manifest.webmanifest", "manifest.webmanifest"),
-                ("static/sw.js", "sw.js")
-            ]
-            for src, arcname in mobile_files:
-                full_path = os.path.join(base_dir, src)
-                if os.path.exists(full_path):
-                    zip_file.write(full_path, arcname)
-
-    zip_buffer.seek(0)
-    return Response(
-        zip_buffer.getvalue(),
-        mimetype="application/zip",
-        headers={"Content-Disposition": "attachment; filename=scamshield-android-studio-project.zip"}
-    )
+    return redirect('/android')
 
 # ---------------- URL CHECK ----------------
 @app.route('/check_url', methods=['POST'])
