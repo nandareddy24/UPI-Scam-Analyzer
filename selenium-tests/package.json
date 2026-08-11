@@ -1,0 +1,23 @@
+{
+  "name": "scam-shield-selenium-tests",
+  "version": "1.0.0",
+  "description": "Selenium WebDriver E2E Automation Test Suite for Scam Shield AI Frontend",
+  "main": "tests/login-tests.js",
+  "scripts": {
+    "test": "node tests/login-tests.js"
+  },
+  "keywords": [
+    "selenium",
+    "e2e",
+    "testing",
+    "scam-shield",
+    "webdriver"
+  ],
+  "author": "Antigravity AI",
+  "license": "ISC",
+  "dependencies": {
+    "chromedriver": "^128.0.0",
+    "dotenv": "^16.4.5",
+    "selenium-webdriver": "^4.24.0"
+  }
+}

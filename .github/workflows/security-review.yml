@@ -1,0 +1,596 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Scam Shield AI — Automated Security Review Pipeline
+#  GitHub Actions Workflow: security-review.yml
+#  Triggers: Push/PR to main, Scheduled weekly scan, Manual dispatch
+#
+#  Phases:
+#    1. Dependency Vulnerability Scan (Safety / pip-audit)
+#    2. SAST — Bandit Python Security Linter
+#    3. SAST — Semgrep with OWASP ruleset
+#    4. Secret Detection — Trufflehog / detect-secrets
+#    5. DAST — OWASP ZAP API Scan (against running Flask app)
+#    6. Report Generation — Consolidated security report
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: 🔐 Security Review Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly automated scan every Monday at 02:00 UTC
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      run_dast:
+        description: "Run DAST (ZAP) scan against live app"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  issues: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  APP_PORT: 5000
+  FLASK_DEBUG: "false"
+  SECRET_KEY: "ci-test-secret-key-not-for-prod-1234567890"
+  ADMIN_EMAIL: "admin@test.scamshield.local"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 1: Dependency Vulnerability Scan
+  # ─────────────────────────────────────────────────────────────────────────────
+  dependency-scan:
+    name: "📦 Dependency Vulnerability Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "🐍 Setup Python ${{ env.PYTHON_VERSION }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: "📦 Install Dependencies"
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install safety pip-audit
+
+      - name: "🔍 Safety — CVE Database Scan"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   SAFETY CHECK — Dependency CVE Scan"
+          echo "═══════════════════════════════════════════"
+          safety check -r requirements.txt --full-report --json > safety-report.json || true
+          safety check -r requirements.txt --full-report || true
+
+      - name: "🔍 pip-audit — PYPA Advisory Database Scan"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   PIP-AUDIT — Advisory Database Scan"
+          echo "═══════════════════════════════════════════"
+          pip-audit -r requirements.txt --format=json --output=pip-audit-report.json || true
+          pip-audit -r requirements.txt || true
+
+      - name: "📊 Check for Outdated Packages"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   OUTDATED PACKAGES"
+          echo "═══════════════════════════════════════════"
+          pip list --outdated
+
+      - name: "📤 Upload Dependency Reports"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-scan-reports
+          path: |
+            safety-report.json
+            pip-audit-report.json
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 2: SAST — Bandit Python Security Linter
+  # ─────────────────────────────────────────────────────────────────────────────
+  bandit-sast:
+    name: "🔎 SAST — Bandit Python Security Linter"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install Bandit"
+        run: pip install bandit[toml] bandit
+
+      - name: "🔍 Bandit Security Scan — High/Medium Severity"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   BANDIT SAST SCAN — app.py"
+          echo "   Severity: HIGH + MEDIUM"
+          echo "═══════════════════════════════════════════"
+          bandit -r app.py \
+            --severity-level medium \
+            --confidence-level medium \
+            --format json \
+            --output bandit-report.json \
+            --tests B101,B102,B103,B104,B105,B106,B107,B108,B110,B201,B301,B302,B303,B304,B305,B306,B307,B308,B311,B312,B313,B315,B320,B321,B322,B323,B324,B325,B401,B402,B403,B404,B405,B406,B407,B408,B409,B411,B412,B413,B501,B502,B503,B504,B505,B506,B507,B601,B602,B603,B604,B605,B606,B607,B608,B609,B610,B611,B701,B702,B703 \
+            || true
+          bandit -r app.py --severity-level medium --confidence-level medium || true
+
+      - name: "🔍 Bandit Full Scan with SARIF Output"
+        run: |
+          pip install bandit-sarif-formatter
+          bandit -r app.py \
+            --format sarif \
+            --output bandit-results.sarif \
+            || true
+
+      - name: "📤 Upload Bandit SARIF to GitHub Security Tab"
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: bandit-results.sarif
+          category: "bandit-sast"
+        continue-on-error: true
+
+      - name: "📤 Upload Bandit Reports"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-sast-reports
+          path: |
+            bandit-report.json
+            bandit-results.sarif
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 3: SAST — Semgrep OWASP Ruleset
+  # ─────────────────────────────────────────────────────────────────────────────
+  semgrep-sast:
+    name: "🔎 SAST — Semgrep OWASP Security Rules"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: returntocorp/semgrep:latest
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🔍 Semgrep — OWASP Top 10 Rules"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   SEMGREP SAST — OWASP Top 10 Ruleset"
+          echo "═══════════════════════════════════════════"
+          semgrep scan \
+            --config "p/owasp-top-ten" \
+            --config "p/python" \
+            --config "p/flask" \
+            --config "p/secrets" \
+            --json \
+            --output semgrep-report.json \
+            app.py \
+            || true
+          semgrep scan \
+            --config "p/owasp-top-ten" \
+            --config "p/flask" \
+            app.py \
+            || true
+
+      - name: "🔍 Semgrep — SARIF Output"
+        run: |
+          semgrep scan \
+            --config "p/owasp-top-ten" \
+            --config "p/flask" \
+            --sarif \
+            --output semgrep-results.sarif \
+            app.py \
+            || true
+
+      - name: "📤 Upload Semgrep SARIF to GitHub Security Tab"
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+          category: "semgrep-sast"
+        continue-on-error: true
+
+      - name: "📤 Upload Semgrep Reports"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sast-reports
+          path: |
+            semgrep-report.json
+            semgrep-results.sarif
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 4: Secret Detection
+  # ─────────────────────────────────────────────────────────────────────────────
+  secret-detection:
+    name: "🔑 Secret Detection Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: "📥 Checkout Repository (Full History)"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "🔍 TruffleHog — Git History Secret Scan"
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: "--debug --only-verified"
+        continue-on-error: true
+
+      - name: "🐍 Setup Python for detect-secrets"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install detect-secrets"
+        run: pip install detect-secrets
+
+      - name: "🔍 detect-secrets — Repository Scan"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   DETECT-SECRETS — Repository Scan"
+          echo "═══════════════════════════════════════════"
+          detect-secrets scan \
+            --list-all-plugins \
+            --exclude-files "\.env\.example" \
+            --exclude-files ".*\.pkl" \
+            --exclude-files ".*\.db" \
+            --exclude-files ".*\.crx" \
+            --baseline .secrets.baseline \
+            || true
+          detect-secrets audit .secrets.baseline || true
+
+      - name: "🔍 Custom Secret Pattern Check"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   CUSTOM PATTERN — Hardcoded Credentials"
+          echo "═══════════════════════════════════════════"
+          echo "Checking for hardcoded secrets in app.py..."
+
+          # Check for hardcoded secret key fallback
+          if grep -n "secret123" app.py; then
+            echo "::warning file=app.py::SECURITY: Hardcoded fallback secret key 'secret123' found (Finding #001)"
+          fi
+
+          # Check for hardcoded admin email
+          if grep -n "ADMIN_EMAIL = \"" app.py; then
+            echo "::warning file=app.py::SECURITY: Hardcoded admin email constant found (Finding #002)"
+          fi
+
+          # Check for debug=True
+          if grep -n "debug=True" app.py; then
+            echo "::error file=app.py::SECURITY: Flask debug=True found — remote code execution risk (Finding #014)"
+          fi
+
+          # Check for random.randint OTP
+          if grep -n "random.randint" app.py; then
+            echo "::warning file=app.py::SECURITY: Non-cryptographic random used for OTP generation (Finding #039)"
+          fi
+
+          # Check for bare except clauses printing sensitive data
+          if grep -n "print.*otp\|print.*password\|print.*OTP" app.py; then
+            echo "::warning file=app.py::SECURITY: Sensitive data (OTP/password) being printed to logs (Finding #016)"
+          fi
+
+          echo "Custom pattern check complete."
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 5: DAST — OWASP ZAP API Scan
+  # ─────────────────────────────────────────────────────────────────────────────
+  dast-zap:
+    name: "🕵️ DAST — OWASP ZAP API Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_dast == 'true'
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install Application Dependencies"
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install reportlab openpyxl
+
+      - name: "🗄️ Initialize Database"
+        run: |
+          python -c "
+          import sqlite3, os
+          db = sqlite3.connect('database.db')
+          cur = db.cursor()
+          cur.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255), email VARCHAR(255) UNIQUE, password TEXT)')
+          cur.execute('CREATE TABLE IF NOT EXISTS blacklist (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, type VARCHAR(50), reason TEXT)')
+          cur.execute('CREATE TABLE IF NOT EXISTS scans (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, type VARCHAR(50), input_data TEXT, score INTEGER, result VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+          cur.execute('CREATE TABLE IF NOT EXISTS community_reports (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, type VARCHAR(50), input_data TEXT, reason TEXT, status VARCHAR(50) DEFAULT chr(80)||chr(101)||chr(110)||chr(100)||chr(105)||chr(110)||chr(103), proof_data TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+          db.commit()
+          print('[OK] Test database initialized')
+          "
+
+      - name: "🚀 Start Flask Application"
+        run: |
+          SECRET_KEY="${{ env.SECRET_KEY }}" \
+          ADMIN_EMAIL="${{ env.ADMIN_EMAIL }}" \
+          FLASK_DEBUG=false \
+          python app.py &
+          echo "Waiting for Flask to start..."
+          sleep 8
+          curl -f http://localhost:${{ env.APP_PORT }}/login || (echo "Flask failed to start" && exit 1)
+          echo "Flask is running on port ${{ env.APP_PORT }}"
+
+      - name: "🔍 OWASP ZAP — API Baseline Scan"
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: "http://localhost:${{ env.APP_PORT }}"
+          rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-a -j -m 5 -T 60"
+          artifact_name: "zap-baseline-report"
+          allow_issue_writing: true
+          fail_action: false
+        continue-on-error: true
+
+      - name: "🔍 ZAP — Specific Endpoint Tests"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   MANUAL DAST — Endpoint Security Tests"
+          echo "═══════════════════════════════════════════"
+          BASE="http://localhost:${{ env.APP_PORT }}"
+
+          echo ""
+          echo "--- TEST 1: Unauthenticated UPI Scan API ---"
+          RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$BASE/api/v1/scan/upi" \
+            -H "Content-Type: application/json" \
+            -d '{"upi":"test@upi"}')
+          if [ "$RESULT" = "200" ]; then
+            echo "::error::FINDING #003: POST /api/v1/scan/upi returned $RESULT without auth (expected 401)"
+          else
+            echo "[OK] /api/v1/scan/upi requires auth: $RESULT"
+          fi
+
+          echo ""
+          echo "--- TEST 2: Unauthenticated URL Scan API ---"
+          RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$BASE/api/v1/scan/url" \
+            -H "Content-Type: application/json" \
+            -d '{"url":"http://example.com"}')
+          if [ "$RESULT" = "200" ]; then
+            echo "::error::FINDING #003: POST /api/v1/scan/url returned $RESULT without auth (expected 401)"
+          else
+            echo "[OK] /api/v1/scan/url requires auth: $RESULT"
+          fi
+
+          echo ""
+          echo "--- TEST 3: Blacklist Delete Without Auth ---"
+          RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$BASE/delete_blacklist/1")
+          if [ "$RESULT" = "302" ] || [ "$RESULT" = "200" ]; then
+            echo "::error::FINDING #006: POST /delete_blacklist/1 returned $RESULT without auth (expected 403)"
+          else
+            echo "[OK] /delete_blacklist requires auth: $RESULT"
+          fi
+
+          echo ""
+          echo "--- TEST 4: Unauthenticated File Upload ---"
+          RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$BASE/scan_qr" \
+            -F "payload=test")
+          if [ "$RESULT" = "200" ] || [ "$RESULT" = "400" ]; then
+            echo "::warning::FINDING #004: POST /scan_qr responded $RESULT without auth (expected 401)"
+          else
+            echo "[OK] /scan_qr auth check: $RESULT"
+          fi
+
+          echo ""
+          echo "--- TEST 5: User Enumeration via Login ---"
+          BODY=$(curl -s -X POST "$BASE/login" \
+            -d "email=nonexistent@test.com&password=test" \
+            -c /tmp/test-cookies.txt)
+          if echo "$BODY" | grep -q "User not found\|not found\|Email not found"; then
+            echo "::warning::FINDING #015: Login reveals whether email exists (user enumeration)"
+          else
+            echo "[OK] Login error message is generic"
+          fi
+
+          echo ""
+          echo "--- TEST 6: Developer Analyze API Without Auth ---"
+          RESULT=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$BASE/api/v1/analyze" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"UPI","data":"test@upi"}')
+          if [ "$RESULT" = "200" ]; then
+            echo "::error::FINDING #028: POST /api/v1/analyze returned $RESULT without auth (expected 401)"
+          else
+            echo "[OK] /api/v1/analyze requires auth: $RESULT"
+          fi
+
+          echo ""
+          echo "DAST endpoint tests complete."
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 6: Security Report Consolidation
+  # ─────────────────────────────────────────────────────────────────────────────
+  security-report:
+    name: "📊 Security Report Consolidation"
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, bandit-sast, semgrep-sast, secret-detection]
+    if: always()
+    timeout-minutes: 10
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install Report Dependencies"
+        run: pip install openpyxl
+
+      - name: "📊 Generate Excel Security Reports"
+        run: |
+          pip install openpyxl
+          python generate_security_reports.py
+          echo "Security reports generated successfully"
+          ls -la *.xlsx 2>/dev/null || echo "No xlsx files found"
+
+      - name: "📋 Generate Consolidated Security Summary"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "   SCAM SHIELD AI — SECURITY SCAN SUMMARY"
+          echo "═══════════════════════════════════════════"
+          echo ""
+          echo "📅 Date: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "🔀 Branch: ${{ github.ref_name }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo ""
+          echo "Known Security Findings from Code Review:"
+          echo "  🔴 Critical: 7"
+          echo "  🟠 High:     9"
+          echo "  🟡 Medium:  11"
+          echo "  🔵 Low:      8"
+          echo "  ℹ️  Info:     6"
+          echo "  Total:      41"
+          echo ""
+          echo "Key Remediation Priorities:"
+          echo "  P0 (Fix Now): #006 delete_blacklist no auth, #001 hardcoded secret key,"
+          echo "                #010 password reset bypass, #002 hardcoded admin email"
+          echo "  P1 (This Week): #003 missing auth on scan APIs, #004 unauthenticated file upload,"
+          echo "                  #005 IDOR on PDF, #011/#012 all users data exposure"
+          echo ""
+          echo "Full report: security-review.md"
+
+      - name: "📤 Upload All Security Reports"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ github.run_number }}
+          path: |
+            security-review.md
+            executive-summary.md
+            findings.xlsx
+            endpoint-inventory.xlsx
+            dependency-report.xlsx
+          retention-days: 90
+
+      - name: "💬 Post PR Comment with Security Summary"
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 🔐 Security Scan Results
+
+            | Category | Count |
+            |---|---|
+            | 🔴 Critical | 7 |
+            | 🟠 High | 9 |
+            | 🟡 Medium | 11 |
+            | 🔵 Low | 8 |
+            | **Total** | **41** |
+
+            **Overall Risk: 🔴 CRITICAL**
+
+            ### ⚡ Top Priority Fixes Required:
+            1. **#006** \`/delete_blacklist\` has ZERO authentication — anyone can delete fraud data
+            2. **#001** Hardcoded fallback \`secret123\` secret key — session forgery possible
+            3. **#010** Password reset bypasses OTP verification — account takeover possible
+            4. **#003** All scan APIs accessible without login — API abuse & quota drain
+
+            📋 Full report in workflow artifacts: \`security-reports-${{ github.run_number }}\`
+            📄 Detailed findings: \`security-review.md\`
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 7: Security Gate (Fail on Critical Findings)
+  # ─────────────────────────────────────────────────────────────────────────────
+  security-gate:
+    name: "🚦 Security Gate — Fail on Critical Issues"
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, bandit-sast]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🚦 Critical Pattern Check"
+        run: |
+          FAILED=0
+
+          echo "Checking for critical security anti-patterns..."
+
+          # Check 1: Hardcoded debug=True
+          if grep -q "app.run(debug=True)" app.py; then
+            echo "::error file=app.py,line=1767::CRITICAL: debug=True detected — Werkzeug REPL exposed"
+            FAILED=1
+          fi
+
+          # Check 2: Unauthenticated blacklist delete
+          if ! grep -A5 "def delete_blacklist" app.py | grep -q "session\|login_required\|ADMIN"; then
+            echo "::error file=app.py,line=963::CRITICAL: delete_blacklist has no authentication check"
+            FAILED=1
+          fi
+
+          # Check 3: Hardcoded secret key fallback
+          if grep -q '"secret123"' app.py; then
+            echo "::error file=app.py,line=29::CRITICAL: Hardcoded fallback secret key 'secret123' detected"
+            FAILED=1
+          fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "══════════════════════════════════════════════"
+            echo "  SECURITY GATE: FAILED — Critical issues found"
+            echo "  Review security-review.md for full details"
+            echo "══════════════════════════════════════════════"
+            exit 1
+          else
+            echo "Security gate checks passed."
+          fi

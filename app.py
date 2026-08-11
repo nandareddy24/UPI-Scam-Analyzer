@@ -342,6 +342,28 @@ def parse_qr_payload(payload):
         "raw": payload
     }
 
+# ---------------- ADMIN API ----------------
+
+@app.route('/api/v1/admin/blacklist', methods=['GET'])
+def api_admin_blacklist():
+    if 'user' not in session or session['user'] != ADMIN_EMAIL:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    cursor.execute("SELECT id, data, type, reason FROM blacklist ORDER BY id DESC")
+    rows = cursor.fetchall()
+    items = [{"id": r[0], "data": r[1], "type": r[2], "reason": r[3]} for r in rows]
+    return jsonify(items)
+
+@app.route('/api/v1/admin/reports', methods=['GET'])
+def api_admin_reports():
+    if 'user' not in session or session['user'] != ADMIN_EMAIL:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    cursor.execute("SELECT id, type, input_data, reason, status, created_at, proof_data FROM community_reports ORDER BY id DESC")
+    rows = cursor.fetchall()
+    reports = [{"id": r[0], "type": r[1], "input_data": r[2], "reason": r[3], "status": r[4], "created_at": str(r[5]), "proof_data": r[6]} for r in rows]
+    return jsonify(reports)
+
 # ---------------- HOME ----------------
 @app.route('/')
 def home():
@@ -506,6 +528,87 @@ def send_email(to_email, subject, body, html_content=None):
 
     print("[WARN] No email credentials or all options failed. Email NOT delivered.", flush=True)
     return False
+
+# ---------------- MOBILE AUTH API ----------------
+
+@app.route('/api/v1/auth/register', methods=['POST'])
+def api_register():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection failed"}), 500
+
+    data = request.get_json(silent=True) or {}
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not all([name, email, password]):
+        return jsonify({"status": "error", "message": "Missing fields"}), 400
+
+    cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+    if cursor.fetchone():
+        return jsonify({"status": "error", "message": "Email already registered"}), 400
+
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    try:
+        cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed))
+        db.commit()
+        session['user'] = email
+        return jsonify({"status": "success", "message": "Registered successfully", "user": {"name": name, "email": email}})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/v1/auth/login', methods=['POST'])
+def api_login():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection failed"}), 500
+
+    data = request.get_json(silent=True) or {}
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({"status": "error", "message": "Email and password required"}), 400
+
+    cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        return jsonify({"status": "error", "message": "User not found"}), 404
+
+    stored = user[3]
+    if isinstance(stored, memoryview):
+        stored = stored.tobytes().decode('utf-8')
+    if isinstance(stored, str):
+        stored = stored.encode('utf-8')
+
+    try:
+        if bcrypt.checkpw(password.encode('utf-8'), stored):
+            session['user'] = email
+            return jsonify({
+                "status": "success",
+                "message": "Login successful",
+                "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": email == ADMIN_EMAIL}
+            })
+        return jsonify({"status": "error", "message": "Invalid password"}), 401
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Login failed"}), 500
+
+@app.route('/api/v1/auth/logout', methods=['POST'])
+def api_logout():
+    session.clear()
+    return jsonify({"status": "success", "message": "Logged out"})
+
+@app.route('/api/v1/auth/me', methods=['GET'])
+def api_me():
+    if 'user' in session:
+        cursor.execute("SELECT id, name, email FROM users WHERE email=%s", (session['user'],))
+        user = cursor.fetchone()
+        if user:
+            return jsonify({
+                "status": "success",
+                "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": session['user'] == ADMIN_EMAIL}
+            })
+    return jsonify({"status": "error", "message": "Not authenticated"}), 401
 
 # ---------------- REGISTER ----------------
 @app.route('/register', methods=['GET', 'POST'])
@@ -1275,6 +1378,7 @@ def download_extension_zip():
 
 # ---------------- MOBILE ANDROID APP ENDPOINTS ----------------
 @app.route('/mobile')
+@app.route('/mobile_app')
 def mobile_app():
     user = session.get('user', 'Guest User')
     return render_template("mobile_app.html", user=user)

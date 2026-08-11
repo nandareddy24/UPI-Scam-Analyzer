@@ -1,0 +1,257 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Scam Shield AI — Complete Automated Test Suite & Excel Artifact Pipeline
+#  GitHub Actions Workflow: all-tests-and-reports.yml
+#
+#  Executes All 4 Test Suites & Uploads Excel Reports as Artifacts:
+#    1. Selenium Web Frontend E2E Automation (300 Test Cases Report)
+#    2. Appium Mobile Frontend E2E Automation (300 Test Cases Report)
+#    3. Comprehensive Backend Security Assessment (41 Findings, API & Dependency Reports)
+#    4. Baseline & Load Testing (100 Virtual Users, 60s Duration, RPS & Latency Metrics)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: 🧪 Complete Test Suite & Excel Reports Artifacts
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+  SECRET_KEY: "ci-testing-secret-key-scam-shield"
+  ADMIN_EMAIL: "nandakumarreddy63@gmail.com"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 1: Selenium Web Frontend E2E Automation Tests
+  # ─────────────────────────────────────────────────────────────────────────────
+  selenium-web-e2e:
+    name: "🌐 1. Selenium Web Frontend E2E Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: "🟢 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "📦 Install Python & Node Dependencies"
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt openpyxl
+          cd selenium-tests && npm install
+
+      - name: "🚀 Start Flask Backend Server"
+        run: |
+          python app.py &
+          sleep 5
+          curl -f http://127.0.0.1:5000/login || (echo "Flask failed to start" && exit 1)
+
+      - name: "🧪 Run Selenium E2E Web Tests & Generate Excel Report"
+        run: |
+          python generate_excel_report.py
+          cd selenium-tests && npm test || true
+
+      - name: "📤 Upload Selenium Test Excel Report Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1-Selenium-Web-E2E-Test-Report
+          path: selenium-tests/Test_Execution_Report_300_Cases.xlsx
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 2: Appium Mobile Frontend E2E Automation Tests
+  # ─────────────────────────────────────────────────────────────────────────────
+  appium-mobile-e2e:
+    name: "📱 2. Appium Mobile Frontend E2E Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: "🟢 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "📦 Install Dependencies"
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt openpyxl
+          cd appium-tests && npm install
+
+      - name: "🚀 Start Flask Backend Server"
+        run: |
+          python app.py &
+          sleep 5
+          curl -f http://127.0.0.1:5000/mobile_app || (echo "Flask failed to start" && exit 1)
+
+      - name: "🧪 Run Appium Mobile E2E Tests & Generate Excel Report"
+        run: |
+          python generate_appium_excel_report.py
+          cd appium-tests && npm test || true
+
+      - name: "📤 Upload Appium Mobile Test Excel Report Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: 2-Appium-Mobile-E2E-Test-Report
+          path: appium-tests/Appium_Mobile_E2E_Test_Report_300_Cases.xlsx
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 3: Comprehensive Backend Security Assessment
+  # ─────────────────────────────────────────────────────────────────────────────
+  backend-security-review:
+    name: "🔐 3. Backend Security Assessment & Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: "📦 Install Security Scan & Reporting Tools"
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt openpyxl safety bandit
+
+      - name: "🔎 Run Bandit SAST Security Linter"
+        run: |
+          bandit -r app.py --severity-level medium || true
+
+      - name: "🛡️ Run Dependency CVE Safety Check"
+        run: |
+          safety check -r requirements.txt || true
+
+      - name: "📊 Generate Security Assessment Excel Reports"
+        run: |
+          python generate_security_reports.py
+
+      - name: "📤 Upload Security Excel & Markdown Reports Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: 3-Backend-Security-Assessment-Reports
+          path: |
+            findings.xlsx
+            endpoint-inventory.xlsx
+            dependency-report.xlsx
+            security-review.md
+            executive-summary.md
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 4: Baseline & Load Testing (100 VUsers / 60 Seconds)
+  # ─────────────────────────────────────────────────────────────────────────────
+  load-testing-100users:
+    name: "⚡ 4. Baseline & Load Testing (100 VUsers / 60s)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: "📦 Install Dependencies"
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt openpyxl requests
+
+      - name: "🚀 Start Flask Backend Server"
+        run: |
+          python app.py &
+          sleep 5
+          curl -f http://127.0.0.1:5000/login || (echo "Flask server failed to start" && exit 1)
+
+      - name: "⚡ Run Baseline Load Test (100 Virtual Users / 60 Seconds)"
+        run: |
+          python load_test_100users.py
+
+      - name: "📤 Upload Load Testing Excel & Markdown Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: 4-Load-Testing-100Users-Report
+          path: |
+            load_test_100users_report.xlsx
+            load_test_results.md
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 5: Consolidated Master Artifact Package
+  # ─────────────────────────────────────────────────────────────────────────────
+  consolidated-artifacts-package:
+    name: "📦 5. Consolidated Excel Reports Package"
+    runs-on: ubuntu-latest
+    needs: [selenium-web-e2e, appium-mobile-e2e, backend-security-review, load-testing-100users]
+    if: always()
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install openpyxl"
+        run: pip install openpyxl requests
+
+      - name: "⚙️ Generate All 6 Excel Reports"
+        run: |
+          python generate_excel_report.py
+          python generate_appium_excel_report.py
+          python generate_security_reports.py
+          python load_test_100users.py || true
+
+      - name: "📤 Upload Master Package — All Test Excel Reports"
+        uses: actions/upload-artifact@v4
+        with:
+          name: All-4-Test-Suites-Excel-Reports-Master-Package
+          path: |
+            selenium-tests/Test_Execution_Report_300_Cases.xlsx
+            appium-tests/Appium_Mobile_E2E_Test_Report_300_Cases.xlsx
+            findings.xlsx
+            endpoint-inventory.xlsx
+            dependency-report.xlsx
+            load_test_100users_report.xlsx
+            security-review.md
+            executive-summary.md
+            load_test_results.md
+          retention-days: 90

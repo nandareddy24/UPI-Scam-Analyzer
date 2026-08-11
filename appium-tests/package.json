@@ -1,0 +1,24 @@
+{
+  "name": "scam-shield-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium Mobile E2E Automation Test Suite for Scam Shield AI Android App Frontend",
+  "main": "tests/mobile-app-tests.js",
+  "scripts": {
+    "test": "node tests/mobile-app-tests.js"
+  },
+  "keywords": [
+    "appium",
+    "webdriverio",
+    "mobile-testing",
+    "android",
+    "uiautomator2",
+    "e2e-testing"
+  ],
+  "author": "Antigravity AI",
+  "license": "ISC",
+  "dependencies": {
+    "appium": "^2.11.3",
+    "dotenv": "^16.4.5",
+    "webdriverio": "^8.39.0"
+  }
+}
