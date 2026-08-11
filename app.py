@@ -1385,15 +1385,7 @@ def mobile_app():
     user = session.get('user', 'Guest User')
     return render_template("mobile_app.html", user=user)
 
-@app.route('/android')
-def android_hub():
-    if 'user' not in session:
-        return redirect('/login')
-    return render_template("android.html", user=session['user'])
 
-@app.route('/download_android_zip')
-def download_android_zip():
-    return redirect('/android')
 
 # ---------------- URL CHECK ----------------
 @app.route('/check_url', methods=['POST'])
