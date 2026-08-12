@@ -38,6 +38,7 @@
         }
         .dock-item {
             transition: all 0.2s ease;
+            cursor: pointer;
         }
         .dock-item.active {
             color: #10b981;
@@ -58,13 +59,27 @@
             object-fit: cover;
             border-radius: 16px;
         }
+        .history-item {
+            border-bottom: 1px solid #334155;
+            padding: 12px 0;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .admin-report-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col justify-between overflow-hidden">
 
     <!-- Top Android App Bar -->
     <header class="bg-[#0f172a] px-5 py-4 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3" onclick="switchMobileScreen('home')">
             <div class="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-extrabold text-lg">
                 🛡️
             </div>
@@ -85,7 +100,7 @@
     </header>
 
     <!-- Main Scrollable App Screen Viewport -->
-    <main class="flex-1 overflow-y-auto p-4 space-y-5 pb-24">
+    <main id="main-content" class="flex-1 overflow-y-auto p-4 space-y-5 pb-24">
 
         <!-- Screen 1: Security Status Dashboard -->
         <div id="screen-home" class="space-y-4">
@@ -128,10 +143,58 @@
                     <span class="text-[10px] text-slate-400">Fraud caller numbers</span>
                 </button>
             </div>
+
+            <div class="mobile-card p-5">
+                <h3 class="text-sm font-bold text-white mb-3">AI Protection Tools</h3>
+                <div class="space-y-3">
+                    <button onclick="switchMobileScreen('report')" class="w-full flex items-center justify-between p-3 bg-slate-900 border border-slate-700 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">🚩</span>
+                            <div class="text-left">
+                                <p class="text-xs font-bold text-white">Report Scam</p>
+                                <p class="text-[10px] text-slate-400">Alert community about fraud</p>
+                            </div>
+                        </div>
+                        <span class="text-slate-500">→</span>
+                    </button>
+                    <button onclick="switchMobileScreen('history')" class="w-full flex items-center justify-between p-3 bg-slate-900 border border-slate-700 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">📊</span>
+                            <div class="text-left">
+                                <p class="text-xs font-bold text-white">Scan History</p>
+                                <p class="text-[10px] text-slate-400">View your audit logs</p>
+                            </div>
+                        </div>
+                        <span class="text-slate-500">→</span>
+                    </button>
+                    <button onclick="switchMobileScreen('extension')" class="w-full flex items-center justify-between p-3 bg-slate-900 border border-slate-700 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">🌐</span>
+                            <div class="text-left">
+                                <p class="text-xs font-bold text-white">Browser Protection</p>
+                                <p class="text-[10px] text-slate-400">Chrome Extension Info</p>
+                            </div>
+                        </div>
+                        <span class="text-slate-500">→</span>
+                    </button>
+                    {% if user == "nandakumarreddy63@gmail.com" %}
+                    <button onclick="switchMobileScreen('admin')" class="w-full flex items-center justify-between p-3 bg-slate-900 border border-slate-700 rounded-xl border-emerald-500/30">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">🛡️</span>
+                            <div class="text-left">
+                                <p class="text-xs font-bold text-white">Admin Panel</p>
+                                <p class="text-[10px] text-emerald-400">Moderator Access</p>
+                            </div>
+                        </div>
+                        <span class="text-slate-500">→</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <!-- Screen 2: Instant Scanner View -->
-        <div id="screen-scan" class="space-y-4">
+        <div id="screen-scan" class="hidden space-y-4">
             <div class="mobile-card p-5 space-y-4">
                 <h2 class="text-lg font-bold text-white">Security Inspection Hub</h2>
                 
@@ -210,6 +273,86 @@
                 <p id="cameraStatus" class="text-xs text-slate-400 italic">Point camera at any UPI QR code or payment poster.</p>
             </div>
         </div>
+
+        <!-- Screen 4: Report Scam Form -->
+        <div id="screen-report" class="hidden space-y-4">
+            <div class="mobile-card p-5 space-y-4">
+                <h2 class="text-lg font-bold text-white">Report Cyber Crime</h2>
+                <p class="text-xs text-slate-400">Help protect others by reporting fraudulent accounts.</p>
+
+                <form id="mobileReportForm" onsubmit="submitMobileReport(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Category</label>
+                        <select id="rType" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none">
+                            <option value="UPI">UPI ID / VPA</option>
+                            <option value="PHONE">Phone Number</option>
+                            <option value="URL">Website / URL</option>
+                            <option value="SMS">SMS Message</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Fraudulent Data</label>
+                        <input type="text" id="rData" required placeholder="e.g. scammer@ybl" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Description</label>
+                        <textarea id="rReason" rows="3" required placeholder="What happened?" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white outline-none"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-xs shadow-lg transition-colors">
+                        🚩 Submit Fraud Report
+                    </button>
+                </form>
+                <div id="rStatus" class="text-center text-xs font-bold"></div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Scan History Audit -->
+        <div id="screen-history" class="hidden space-y-4">
+            <div class="mobile-card p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-white">Recent Audit Logs</h2>
+                    <button onclick="loadMobileHistory()" class="text-[10px] font-bold text-emerald-400">Refresh 🔄</button>
+                </div>
+
+                <div id="historyList" class="space-y-1">
+                    <div class="text-center py-8 text-slate-500 text-xs">Loading history...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 6: Browser Protection Info -->
+        <div id="screen-extension" class="hidden space-y-4">
+            <div class="mobile-card p-5 text-center space-y-4">
+                <span class="text-4xl">🌐</span>
+                <h2 class="text-lg font-bold text-white">Browser Protection</h2>
+                <p class="text-xs text-slate-400">Install the ScamShield Chrome Extension on your PC for real-time web protection.</p>
+                <div class="bg-slate-900 p-4 rounded-xl text-left space-y-2">
+                    <p class="text-[10px] font-bold text-emerald-400 uppercase">Features:</p>
+                    <ul class="text-[11px] text-slate-300 list-disc pl-4 space-y-1">
+                        <li>Real-time URL Phishing detection</li>
+                        <li>Block known malicious domains</li>
+                        <li>One-click UPI scam checks</li>
+                    </ul>
+                </div>
+                <a href="/download_extension_zip" class="block w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs shadow-lg">
+                    📥 Download Extension (.zip)
+                </a>
+            </div>
+        </div>
+
+        <!-- Screen 7: Admin Panel (Moderation) -->
+        <div id="screen-admin" class="hidden space-y-4">
+            <div class="mobile-card p-5 space-y-4">
+                <h2 class="text-lg font-bold text-white">Moderation Hub</h2>
+                <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Community Reports</p>
+                <div id="adminReportList" class="space-y-3">
+                    <div class="text-center py-8 text-slate-500 text-xs text-center">Loading community reports...</div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Floating Android Bottom Navigation Bar Dock -->
@@ -226,17 +369,22 @@
 
         <button onclick="switchMobileScreen('camera')" id="dock-camera" class="dock-item flex flex-col items-center gap-1 text-slate-400 hover:text-white">
             <span class="text-xl">📷</span>
-            <span class="text-[10px]">Camera QR</span>
+            <span class="text-[10px]">Camera</span>
         </button>
 
-        <a href="/report" class="dock-item flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+        <button onclick="switchMobileScreen('report')" id="dock-report" class="dock-item flex flex-col items-center gap-1 text-slate-400 hover:text-white">
             <span class="text-xl text-red-500">🚩</span>
             <span class="text-[10px]">Report</span>
-        </a>
+        </button>
 
-        <a href="/history" class="dock-item flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+        <button onclick="switchMobileScreen('history')" id="dock-history" class="dock-item flex flex-col items-center gap-1 text-slate-400 hover:text-white">
             <span class="text-xl">📊</span>
             <span class="text-[10px]">History</span>
+        </button>
+
+        <a href="/logout" class="dock-item flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+            <span class="text-xl">🚪</span>
+            <span class="text-[10px]">Logout</span>
         </a>
     </nav>
 
@@ -246,8 +394,22 @@
             console.log("ScamShield: DOM fully loaded and parsed");
             if (window.ScamShieldNative) {
                 window.ScamShieldNative.showNativeToast("Shield Interface Ready");
-            } else {
-                console.error("ScamShieldNative interface not found");
+            }
+
+            // Handle server-side screen selection
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetScreen = urlParams.get('screen');
+            if (targetScreen) {
+                switchMobileScreen(targetScreen);
+                const targetMode = urlParams.get('mode');
+                if (targetMode) setMobileMode(targetMode);
+            }
+        });
+
+        // Handle back button for SPA screens
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.screen) {
+                switchMobileScreen(event.state.screen, true);
             }
         });
 
@@ -262,26 +424,45 @@
             'OCR': { type: 'file' }
         };
 
-        function switchMobileScreen(screen) {
+        function switchMobileScreen(screen, fromPopState = false) {
             document.getElementById('screen-home').classList.add('hidden');
             document.getElementById('screen-scan').classList.add('hidden');
             document.getElementById('screen-camera').classList.add('hidden');
+            document.getElementById('screen-report').classList.add('hidden');
+            document.getElementById('screen-history').classList.add('hidden');
+            document.getElementById('screen-extension').classList.add('hidden');
+            document.getElementById('screen-admin').classList.add('hidden');
 
             document.querySelectorAll('.dock-item').forEach(d => d.classList.remove('active'));
 
-            if (screen === 'home') {
-                document.getElementById('screen-home').classList.remove('hidden');
-                document.getElementById('dock-home').classList.add('active');
-                stopMobileCamera();
-            } else if (screen === 'scan') {
-                document.getElementById('screen-scan').classList.remove('hidden');
-                document.getElementById('dock-scan').classList.add('active');
-                stopMobileCamera();
-            } else if (screen === 'camera') {
-                document.getElementById('screen-camera').classList.remove('hidden');
-                document.getElementById('dock-camera').classList.add('active');
-                startMobileCamera();
+            const section = document.getElementById('screen-' + screen);
+            if (section) section.classList.remove('hidden');
+
+            const dockItem = document.getElementById('dock-' + screen);
+            if (dockItem) dockItem.classList.add('active');
+
+            if (!fromPopState) {
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('screen', screen);
+                window.history.pushState({ screen: screen }, '', currentUrl.toString());
             }
+
+            if (screen === 'camera') {
+                startMobileCamera();
+            } else {
+                stopMobileCamera();
+            }
+
+            if (screen === 'history') {
+                loadMobileHistory();
+            }
+
+            if (screen === 'admin') {
+                loadAdminReports();
+            }
+
+            // Scroll to top
+            document.getElementById('main-content').scrollTop = 0;
         }
 
         function setMobileMode(mode) {
@@ -320,17 +501,15 @@
             if (mobileMode === 'OCR') {
                 const fileInput = document.getElementById('mFile');
                 if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-                    out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-amber-500 text-xs text-amber-300">Please select an image file or screenshot first.</div>`;
+                    out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-amber-500 text-xs text-amber-300">Please select an image file first.</div>`;
                     return;
                 }
                 let fd = new FormData();
                 fd.append('screenshot', fileInput.files[0]);
 
-                fetch('/scan_ocr', {
-                    method: 'POST',
-                    body: fd
-                }).then(r => r.json()).then(renderMobileResult).catch(err => {
-                    out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-red-500 text-xs text-red-400">OCR Analysis failed: ${err.message}</div>`;
+                fetch('/scan_ocr', { method: 'POST', body: fd })
+                .then(r => r.json()).then(renderMobileResult).catch(err => {
+                    out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-red-500 text-xs text-red-400">Analysis failed.</div>`;
                 });
                 return;
             }
@@ -352,12 +531,17 @@
                 bodyData = { sms: document.getElementById('mPayload').value.trim() };
             }
 
+            if (!bodyData[mobileMode.toLowerCase()] && mobileMode !== 'OCR') {
+                out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-amber-500 text-xs text-amber-300">Please enter data to scan.</div>`;
+                return;
+            }
+
             fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bodyData)
             }).then(r => r.json()).then(renderMobileResult).catch(err => {
-                out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-red-500 text-xs text-red-400">Inspection failed: ${err.message}</div>`;
+                out.innerHTML = `<div class="mobile-card p-4 border-l-4 border-l-red-500 text-xs text-red-400">Scan failed.</div>`;
             });
         }
 
@@ -375,13 +559,118 @@
                         </span>
                         <span class="text-xs font-bold text-slate-300">Threat Score: <strong class="text-white">${data.score || 0}</strong> / 25</span>
                     </div>
-                    <p class="text-xs font-semibold text-white bg-slate-900 p-3 rounded-xl border border-slate-800">${data.reason || 'Payload analyzed cleanly.'}</p>
+                    <p class="text-xs font-semibold text-white bg-slate-900 p-3 rounded-xl border border-slate-800">${data.reason || 'Analyzed cleanly.'}</p>
                     <p class="text-[11px] text-emerald-400 bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-800/50">💡 ${data.advice || 'Maintain vigilance.'}</p>
                 </div>
             `;
         }
 
-        // HTML5 Camera Scanner
+        function submitMobileReport(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const status = document.getElementById('rStatus');
+
+            const payload = {
+                type: document.getElementById('rType').value,
+                data: document.getElementById('rData').value.trim(),
+                reason: document.getElementById('rReason').value.trim()
+            };
+
+            btn.disabled = true;
+            status.textContent = "Submitting...";
+
+            fetch('/report_scam', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).then(res => {
+                btn.disabled = false;
+                if (res.status === 'success') {
+                    status.className = "text-center text-xs font-bold text-emerald-400 mt-2";
+                    status.textContent = "✅ Report submitted successfully!";
+                    document.getElementById('rData').value = '';
+                    document.getElementById('rReason').value = '';
+                } else {
+                    status.className = "text-center text-xs font-bold text-red-400 mt-2";
+                    status.textContent = "❌ Error: " + res.message;
+                }
+            }).catch(() => {
+                btn.disabled = false;
+                status.className = "text-center text-xs font-bold text-red-400 mt-2";
+                status.textContent = "❌ Network error.";
+            });
+        }
+
+        function loadMobileHistory() {
+            const list = document.getElementById('historyList');
+            fetch('/api/v1/mobile/history')
+            .then(r => r.json())
+            .then(data => {
+                if (data.length === 0) {
+                    list.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs">No scan history found.</div>`;
+                    return;
+                }
+                let html = '';
+                data.forEach(item => {
+                    let color = item.result === 'Safe' ? 'text-emerald-400' : (item.result === 'Warning' ? 'text-amber-400' : 'text-red-400');
+                    html += `
+                        <div class="history-item">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="px-2 py-0.5 bg-slate-800 rounded text-[9px] font-bold text-slate-300 uppercase">${item.type}</span>
+                                <span class="text-[9px] text-slate-500">${item.date.split('.')[0]}</span>
+                            </div>
+                            <p class="text-xs font-bold text-white truncate">${item.data}</p>
+                            <p class="text-[10px] ${color} font-bold">${item.result} (Score: ${item.score})</p>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            }).catch(() => {
+                list.innerHTML = `<div class="text-center py-8 text-red-400 text-xs">Error loading history.</div>`;
+            });
+        }
+
+        function loadAdminReports() {
+            const list = document.getElementById('adminReportList');
+            fetch('/api/v1/admin/reports')
+            .then(r => r.json())
+            .then(data => {
+                if (data.length === 0) {
+                    list.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs">No community reports pending.</div>`;
+                    return;
+                }
+                let html = '';
+                data.forEach(item => {
+                    html += `
+                        <div class="admin-report-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="px-2 py-0.5 bg-red-900/30 text-red-400 border border-red-800 rounded text-[9px] font-bold uppercase">${item.type}</span>
+                                <span class="text-[9px] text-slate-500">${item.created_at.split(' ')[0]}</span>
+                            </div>
+                            <p class="text-xs font-bold text-white mb-1 truncate">${item.input_data}</p>
+                            <p class="text-[10px] text-slate-400 mb-3 italic">"${item.reason}"</p>
+                            <div class="flex gap-2">
+                                <button onclick="moderateReport(${item.id}, 'approve')" class="flex-1 bg-emerald-700 py-1.5 rounded-lg text-[9px] font-bold text-white">Approve</button>
+                                <button onclick="moderateReport(${item.id}, 'reject')" class="flex-1 bg-slate-700 py-1.5 rounded-lg text-[9px] font-bold text-white text-slate-300">Reject</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            }).catch(() => {
+                list.innerHTML = `<div class="text-center py-8 text-red-400 text-xs">Error loading reports.</div>`;
+            });
+        }
+
+        function moderateReport(id, action) {
+            const endpoint = action === 'approve' ? `/admin/approve_report/${id}` : `/admin/reject_report/${id}`;
+            fetch(endpoint, { method: 'POST' })
+            .then(() => {
+                if (window.ScamShieldNative) window.ScamShieldNative.showNativeToast("Report " + action + "d");
+                loadAdminReports();
+            });
+        }
+
         async function startMobileCamera() {
             try {
                 const video = document.getElementById('cameraVideo');
@@ -417,16 +706,14 @@
                 .then(r => r.json())
                 .then(data => {
                     document.getElementById('cameraStatus').textContent = `Result: ${data.result || 'Scanned'} (Score: ${data.score || 0})`;
+                    if (data.result) {
+                        alert("Verdict: " + data.result + "\n" + (data.reason || ""));
+                    }
                 })
                 .catch(err => {
                     document.getElementById('cameraStatus').textContent = "Error scanning QR frame.";
                 });
             }, 'image/png');
-        }
-
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js').catch(() => {});
         }
     </script>
 </body>

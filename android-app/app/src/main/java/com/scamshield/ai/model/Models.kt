@@ -1,0 +1,59 @@
+package com.scamshield.ai.model
+
+import com.google.gson.annotations.SerializedName
+
+data class User(
+    val id: Int,
+    val name: String,
+    val email: String,
+    @SerializedName("is_admin") val isAdmin: Boolean
+)
+
+data class LoginResponse(
+    val status: String,
+    val message: String,
+    val token: String?,
+    val user: User?
+)
+
+data class RegisterResponse(
+    val status: String,
+    val message: String,
+    val user: User?
+)
+
+data class ScanRequest(
+    val upi: String? = null,
+    val phone: String? = null,
+    val sms: String? = null,
+    val url: String? = null
+)
+
+data class ScanResponse(
+    val status: String?,
+    val result: String,
+    val score: Int,
+    val reason: String,
+    val advice: String?,
+    val confidence: Int?
+)
+
+data class HistoryItem(
+    val type: String,
+    val data: String,
+    val score: Int,
+    val result: String,
+    val date: String
+)
+
+data class ReportRequest(
+    val type: String,
+    val data: String,
+    val reason: String,
+    val proof: String? = null
+)
+
+data class GenericResponse(
+    val status: String,
+    val message: String
+)

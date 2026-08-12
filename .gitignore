@@ -1,8 +1,21 @@
 .env
+.env.*
 database.db
 __pycache__/
 *.pyc
 .vscode/
 .idea/
 node_modules/
+
+# Android / Gradle
+.gradle/
+build/
+**/build/
+local.properties
+*.iml
+.externalNativeBuild
+.cxx
+capture.png
+
+
 

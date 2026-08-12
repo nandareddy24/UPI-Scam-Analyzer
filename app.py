@@ -1,6 +1,10 @@
 import email
+import jwt
+import datetime
+from functools import wraps
 
 from flask import Flask, render_template, request, redirect, jsonify, session
+from flask_cors import CORS
 import psycopg2
 import bcrypt
 import re
@@ -26,9 +30,69 @@ import requests
 import base64
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
+
+# Flask Session Configuration for Android WebView Persistence
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False,  # Set to False for local Wi-Fi HTTP
+    PERMANENT_SESSION_LIFETIME=604800 # 7 days persistence
+)
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "nandakumarreddy63@gmail.com")
+
+# ---------------- AUTH HELPERS ----------------
+
+def create_token(user_id):
+    payload = {
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
+        'iat': datetime.datetime.utcnow(),
+        'sub': user_id
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm='HS256')
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            if auth_header.startswith('Bearer '):
+                token = auth_header.split(" ")[1]
+
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+
+        try:
+            data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+            current_user_id = data['sub']
+            # Fetch user email from ID
+            cursor.execute("SELECT email FROM users WHERE id=%s", (current_user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'message': 'User not found!'}), 401
+            request.user_email = row[0]
+            request.user_id = current_user_id
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Invalid token!'}), 401
+        except Exception as e:
+            return jsonify({'message': str(e)}), 401
+
+        return f(*args, **kwargs)
+    return decorated
+
+def get_auth_user_id():
+    # Helper to get user ID from either session or token
+    if 'user' in session:
+        return get_auth_user_id()
+    if hasattr(request, 'user_id'):
+        return request.user_id
+    return None
 
 # ---------------- DATABASE ----------------
 
@@ -260,7 +324,19 @@ def check_blacklist_or_community(input_data, input_type):
             print("[WARN] Blacklist/Community check exception:", e)
     return score_bump, matches
 
-def get_current_user_id():
+def get_auth_user_id():
+    # 1. Try to get from Authorization header (Token-based / Android)
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(" ")[1]
+            try:
+                data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+                return data['sub']
+            except:
+                pass
+
+    # 2. Try to get from Session (Web)
     if 'user' in session and cursor is not None:
         try:
             cursor.execute("SELECT id FROM users WHERE email=%s", (session['user'],))
@@ -269,6 +345,7 @@ def get_current_user_id():
                 return row[0]
         except Exception as e:
             print("[WARN] User ID fetch exception:", e)
+    return None
 def check_virustotal_api(target_url):
     vt_key = os.getenv("VIRUSTOTAL_API_KEY")
     if not vt_key:
@@ -569,7 +646,7 @@ def api_login():
     if not email or not password:
         return jsonify({"status": "error", "message": "Email and password required"}), 400
 
-    cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+    cursor.execute("SELECT id, name, email, password FROM users WHERE email=%s", (email,))
     user = cursor.fetchone()
 
     if not user:
@@ -583,10 +660,11 @@ def api_login():
 
     try:
         if bcrypt.checkpw(password.encode('utf-8'), stored):
-            session['user'] = email
+            token = create_token(user[0])
             return jsonify({
                 "status": "success",
                 "message": "Login successful",
+                "token": token,
                 "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": email == ADMIN_EMAIL}
             })
         return jsonify({"status": "error", "message": "Invalid password"}), 401
@@ -599,15 +677,16 @@ def api_logout():
     return jsonify({"status": "success", "message": "Logged out"})
 
 @app.route('/api/v1/auth/me', methods=['GET'])
+@token_required
 def api_me():
-    if 'user' in session:
-        cursor.execute("SELECT id, name, email FROM users WHERE email=%s", (session['user'],))
-        user = cursor.fetchone()
-        if user:
-            return jsonify({
-                "status": "success",
-                "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": session['user'] == ADMIN_EMAIL}
-            })
+    uid = request.user_id
+    cursor.execute("SELECT id, name, email FROM users WHERE id=%s", (uid,))
+    user = cursor.fetchone()
+    if user:
+        return jsonify({
+            "status": "success",
+            "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": user[2] == ADMIN_EMAIL}
+        })
     return jsonify({"status": "error", "message": "Not authenticated"}), 401
 
 # ---------------- REGISTER ----------------
@@ -730,6 +809,14 @@ def verify_reset_otp():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
 
+    # If already logged in, redirect to appropriate dashboard
+    if 'user' in session:
+        user_agent = request.headers.get('User-Agent', '').lower()
+        is_mobile = request.args.get('mobile') == '1' or "scamshieldandroid" in user_agent
+        if is_mobile:
+            return redirect('/mobile_app')
+        return redirect('/dashboard')
+
     if cursor is None:
         return render_template("login.html", error="Database connection unavailable. Please check system status.")
 
@@ -763,7 +850,16 @@ def login():
                 password.encode('utf-8'),
                 stored
             ):
+                session.permanent = True
                 session['user'] = email
+
+                # Check for mobile parameter from query string or hidden form field
+                is_mobile = request.args.get('mobile') == '1' or request.form.get('mobile') == '1'
+
+                # Auto-redirect mobile app users to the mobile dashboard
+                if is_mobile:
+                    return redirect('/mobile_app')
+
                 return redirect('/dashboard')
 
             return render_template("login.html", error="Incorrect password. Please verify your password and try again.", email=email)
@@ -777,8 +873,69 @@ def login():
 # ---------------- LOGOUT ----------------
 @app.route('/logout')
 def logout():
+    is_mobile = "ScamShieldAndroid" in request.headers.get('User-Agent', '')
     session.clear()
+    if is_mobile:
+        return redirect('/login?mobile=1')
     return redirect('/login')
+
+# ---------------- FORGOT PASSWORD API ----------------
+@app.route('/api/v1/auth/forgot-password', methods=['POST'])
+def api_forgot_password():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection failed"}), 500
+
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+
+    if not email:
+        return jsonify({"status": "error", "message": "Email is required"}), 400
+
+    cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        return jsonify({"status": "error", "message": "Email not found"}), 404
+
+    otp = str(random.randint(100000, 999999))
+    expiry = time.time() + 600
+    reset_otp_storage[email] = (otp, expiry)
+
+    html = generate_otp_email_html(otp, action_name="Password Reset")
+    send_email(email, "Password Reset OTP", f"Your OTP is: {otp}", html_content=html)
+
+    return jsonify({"status": "success", "message": "Reset OTP sent to your email"})
+
+@app.route('/api/v1/auth/reset-password', methods=['POST'])
+def api_reset_password():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection failed"}), 500
+
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    otp = data.get('otp', '')
+    new_password = data.get('password', '')
+
+    if not all([email, otp, new_password]):
+        return jsonify({"status": "error", "message": "Missing required fields"}), 400
+
+    if email not in reset_otp_storage:
+        return jsonify({"status": "error", "message": "Reset session expired"}), 400
+
+    stored_otp, expiry = reset_otp_storage[email]
+    if time.time() > expiry:
+        reset_otp_storage.pop(email)
+        return jsonify({"status": "error", "message": "OTP expired"}), 400
+
+    if otp != stored_otp:
+        return jsonify({"status": "error", "message": "Invalid OTP"}), 400
+
+    hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    cursor.execute("UPDATE users SET password=%s WHERE email=%s", (hashed, email))
+    db.commit()
+    reset_otp_storage.pop(email)
+
+    return jsonify({"status": "success", "message": "Password updated successfully"})
 
 # ---------------- FORGOT PASSWORD ----------------
 @app.route('/forgot', methods=['GET', 'POST'])
@@ -858,6 +1015,12 @@ def update_password():
 def scan_hub():
     if 'user' not in session:
         return redirect('/login')
+
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=scan')
+
     return render_template("scan.html", user=session['user'])
 
 # ---------------- DASHBOARD ----------------
@@ -866,13 +1029,18 @@ def dashboard():
     if 'user' not in session:
         return redirect('/login')
 
+    # Auto-redirect mobile app users to the mobile dashboard
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app')
+
     total = 0
     safe = 0
     warning = 0
     danger = 0
     recent_scans = []
     is_admin = (session['user'] == ADMIN_EMAIL)
-    uid = get_current_user_id()
+    uid = get_auth_user_id()
 
     if cursor is not None:
         try:
@@ -934,6 +1102,11 @@ def admin():
 
     if session['user'] != ADMIN_EMAIL:
         return redirect('/dashboard')
+
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=admin')
 
     if request.method == 'POST':
         data = request.form['data']
@@ -999,9 +1172,14 @@ def history():
     if 'user' not in session:
         return redirect('/login')
 
+    # Auto-redirect mobile app users to the mobile dashboard with history screen
+    user_agent = request.headers.get('User-Agent', '')
+    if "ScamShieldAndroid" in user_agent:
+        return redirect('/mobile_app?screen=history')
+
     scans = []
     is_admin = (session['user'] == ADMIN_EMAIL)
-    uid = get_current_user_id()
+    uid = get_auth_user_id()
 
     if cursor is not None:
         try:
@@ -1036,7 +1214,7 @@ def export_data():
     from flask import Response
 
     is_admin = (session['user'] == ADMIN_EMAIL)
-    uid = get_current_user_id()
+    uid = get_auth_user_id()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -1076,6 +1254,12 @@ def export_data():
 def ocr_qr_page():
     if 'user' not in session:
         return redirect('/login')
+
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=scan&mode=OCR')
+
     return render_template("ocr_qr.html", user=session['user'])
 
 # QR Code Fraud Scanner Endpoint
@@ -1252,6 +1436,11 @@ def upi():
     if 'user' not in session:
         return redirect('/login')
 
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=scan&mode=UPI')
+
     return render_template(
         "upi.html",
         user=session['user']
@@ -1263,6 +1452,11 @@ def url_page():
     if 'user' not in session:
         return redirect('/login')
 
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=scan&mode=URL')
+
     return render_template(
         "url.html",
         user=session['user']
@@ -1273,6 +1467,11 @@ def sms():
 
     if 'user' not in session:
         return redirect('/login')
+
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=scan&mode=SMS')
 
     return render_template(
         "sms.html",
@@ -1329,7 +1528,7 @@ def check_upi():
 
     # Save Scan History
     try:
-        uid = get_current_user_id()
+        uid = get_auth_user_id()
         cursor.execute(
             "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
             (uid, "UPI", upi, score, result)
@@ -1371,7 +1570,7 @@ def check_phone():
     confidence, advice = get_confidence_and_advice(score)
 
     try:
-        uid = get_current_user_id()
+        uid = get_auth_user_id()
         cursor.execute(
             "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
             (uid, "PHONE", phone, score, result)
@@ -1411,7 +1610,7 @@ def extension_check_url():
     # Log threat alerts automatically into scan history
     if check_res.get('score', 0) >= 3 and cursor is not None:
         try:
-            uid = get_current_user_id()
+            uid = get_auth_user_id()
             cursor.execute(
                 "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
                 (uid, "URL", f"[Extension Guard] {url}", check_res.get('score', 0), check_res.get('result', 'Warning'))
@@ -1428,6 +1627,12 @@ def extension_check_url():
 def extension_page():
     if 'user' not in session:
         return redirect('/login')
+
+    # Auto-redirect mobile app users
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if "scamshieldandroid" in user_agent:
+        return redirect('/mobile_app?screen=extension')
+
     return render_template("extension.html", user=session['user'])
 
 @app.route('/download_extension_zip')
@@ -1460,6 +1665,8 @@ def download_extension_zip():
 @app.route('/mobile')
 @app.route('/mobile_app')
 def mobile_app():
+    if 'user' not in session:
+        return redirect('/login')
     user = session.get('user', 'Guest User')
     return render_template("mobile_app.html", user=user)
 
@@ -1542,7 +1749,7 @@ def check_url():
 
     # Save Scan History
     try:
-        uid = get_current_user_id()
+        uid = get_auth_user_id()
         cursor.execute(
             "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
             (uid, "URL", url, score, result)
@@ -1619,7 +1826,7 @@ def check_sms():
 
     # Save Scan History
     try:
-        uid = get_current_user_id()
+        uid = get_auth_user_id()
         cursor.execute(
             "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
             (uid, "SMS", sms, score, result)
@@ -1643,6 +1850,12 @@ def check_sms():
 def report_page():
     if 'user' not in session:
         return redirect('/login')
+
+    # Auto-redirect mobile app users to the mobile dashboard with report screen
+    user_agent = request.headers.get('User-Agent', '')
+    if "ScamShieldAndroid" in user_agent:
+        return redirect('/mobile_app?screen=report')
+
     return render_template("report.html", user=session['user'])
 
 @app.route('/report_scam', methods=['POST'])
@@ -1663,7 +1876,7 @@ def report_scam():
         return jsonify({"status": "error", "message": "Missing required fields (data, type)"}), 400
 
     try:
-        user_id = get_current_user_id() or 1
+        user_id = get_auth_user_id() or 1
         cursor.execute(
             "INSERT INTO community_reports (user_id, type, input_data, reason, proof_data) VALUES (%s, %s, %s, %s, %s)",
             (user_id, type_, data, reason, proof)
@@ -1701,10 +1914,26 @@ def api_v1_analyze():
         return jsonify({"error": "Unsupported type. Valid types are: UPI, URL, SMS."}), 400
 
 
+# ---------------- MOBILE API ----------------
+
+@app.route('/api/v1/mobile/history')
+def api_mobile_history():
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    uid = get_auth_user_id()
+    try:
+        cursor.execute("SELECT type, input_data, score, result, created_at FROM scans WHERE user_id=%s ORDER BY id DESC LIMIT 20", (uid,))
+        rows = cursor.fetchall()
+        scans = [{"type": r[0], "data": r[1], "score": r[2], "result": r[3], "date": str(r[4])} for r in rows]
+        return jsonify(scans)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ---------------- RUN ----------------
 if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
-    host = os.getenv("HOST", "0.0.0.0")
+    host = "0.0.0.0"
     port = int(os.getenv("PORT", 3000))
-    print(f"[OK] ScamShield Server running on http://0.0.0.0:{port} (Accessible on local Wi-Fi at http://<MY-PC-IP>:{port})")
+    print(f"[OK] ScamShield Server running on http://{host}:{port} (Accessible on local Wi-Fi)")
     app.run(host=host, port=port, debug=debug_mode)
