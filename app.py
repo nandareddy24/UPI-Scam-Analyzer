@@ -30,7 +30,9 @@ import requests
 import base64
 
 app = Flask(__name__)
-CORS(app)
+# Restrict CORS to specific origins if known, or at least common web use cases.
+# Native apps don't use CORS.
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
 
@@ -86,29 +88,6 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
-def get_auth_user_id():
-    # 1. Try to get from Authorization header (Token-based / Android)
-    if 'Authorization' in request.headers:
-        auth_header = request.headers['Authorization']
-        if auth_header.startswith('Bearer '):
-            token = auth_header.split(" ")[1]
-            try:
-                data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
-                return data['sub']
-            except:
-                pass
-
-    # 2. Try to get from Session (Web)
-    if 'user' in session and cursor is not None:
-        try:
-            # We use the email from session to lookup the ID
-            cursor.execute("SELECT id FROM users WHERE email=%s", (session['user'],))
-            row = cursor.fetchone()
-            if row:
-                return row[0]
-        except Exception as e:
-            print("[WARN] User ID fetch exception:", e)
-    return None
 
 # ---------------- DATABASE ----------------
 
@@ -349,24 +328,17 @@ def check_blacklist_or_community(input_data, input_type):
     return score_bump, matches
 
 def get_auth_user_id():
-    # 1. Try to get from Authorization header (Token-based / Android)
-    if 'Authorization' in request.headers:
-        auth_header = request.headers['Authorization']
-        if auth_header.startswith('Bearer '):
-            token = auth_header.split(" ")[1]
-            try:
-                data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
-                return data['sub']
-            except:
-                pass
+    if hasattr(request, 'user_id'):
+        return request.user_id
 
-    # 2. Try to get from Session (Web)
     if 'user' in session and cursor is not None:
         try:
-            cursor.execute("SELECT id FROM users WHERE email=%s", (session['user'],))
+            cursor.execute(
+                "SELECT id FROM users WHERE email=%s",
+                (session['user'],)
+            )
             row = cursor.fetchone()
-            if row:
-                return row[0]
+            return row[0] if row else None
         except Exception as e:
             print("[WARN] User ID fetch exception:", e)
     return None
@@ -643,37 +615,68 @@ def send_email(to_email, subject, body, html_content=None):
 @app.route('/api/v1/auth/register', methods=['POST'])
 def api_register():
     if cursor is None:
-        return jsonify({"status": "error", "message": "Database connection failed"}), 500
+        return jsonify({"status": "error", "message": "Database connection failed"}), 503
 
     data = request.get_json(silent=True) or {}
-    name = data.get('name')
-    email = data.get('email')
-    password = data.get('password')
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
 
     if not all([name, email, password]):
         return jsonify({"status": "error", "message": "Missing fields"}), 400
 
     cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
     if cursor.fetchone():
-        return jsonify({"status": "error", "message": "Email already registered"}), 400
+        return jsonify({"status": "error", "message": "Email already registered"}), 409
+
+    otp = str(random.randint(100000, 999999))
+    expiry = time.time() + 600  # 10 minutes TTL
+    otp_storage[email] = (otp, name, password, expiry)
+
+    html = generate_otp_email_html(otp, action_name="Mobile Account Registration")
+    sent = send_email(email, "Scam Shield AI - Registration OTP", f"Your OTP is: {otp}", html_content=html)
+
+    return jsonify({"status": "success", "message": "OTP sent to email", "email": email})
+
+@app.route('/api/v1/auth/verify-registration', methods=['POST'])
+def api_verify_registration():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection failed"}), 503
+
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    user_otp = data.get('otp', '').strip()
+
+    if email not in otp_storage:
+        return jsonify({"status": "error", "message": "Registration session not found"}), 404
+
+    stored_data = otp_storage[email]
+    otp, name, password, expiry = stored_data
+
+    if time.time() > expiry:
+        otp_storage.pop(email, None)
+        return jsonify({"status": "error", "message": "OTP expired"}), 410
+
+    if user_otp != otp:
+        return jsonify({"status": "error", "message": "Invalid OTP"}), 401
 
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     try:
         cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed))
         db.commit()
-        session['user'] = email
-        return jsonify({"status": "success", "message": "Registered successfully", "user": {"name": name, "email": email}})
+        otp_storage.pop(email, None)
+        return jsonify({"status": "success", "message": "Account verified and created successfully"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/v1/auth/login', methods=['POST'])
 def api_login():
     if cursor is None:
-        return jsonify({"status": "error", "message": "Database connection failed"}), 500
+        return jsonify({"status": "error", "message": "Database connection failed"}), 503
 
     data = request.get_json(silent=True) or {}
-    email = data.get('email')
-    password = data.get('password')
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
 
     if not email or not password:
         return jsonify({"status": "error", "message": "Email and password required"}), 400
@@ -692,18 +695,24 @@ def api_login():
 
     try:
         if bcrypt.checkpw(password.encode('utf-8'), stored):
+            # Check if admin
+            cursor.execute("SELECT email FROM users WHERE id=%s", (user[0],))
+            email_row = cursor.fetchone()
+            is_admin = email_row and email_row[0] == ADMIN_EMAIL
+
             token = create_token(user[0])
             return jsonify({
                 "status": "success",
                 "message": "Login successful",
                 "token": token,
-                "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": email == ADMIN_EMAIL}
+                "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": is_admin}
             })
         return jsonify({"status": "error", "message": "Invalid password"}), 401
     except Exception as e:
         return jsonify({"status": "error", "message": "Login failed"}), 500
 
 @app.route('/api/v1/auth/logout', methods=['POST'])
+@token_required
 def api_logout():
     session.clear()
     return jsonify({"status": "success", "message": "Logged out"})
@@ -1282,6 +1291,7 @@ def ocr_qr_page():
 # QR Code Fraud Scanner Endpoint
 @app.route('/scan_qr', methods=['POST'])
 @app.route('/api/v1/scan/qr', methods=['POST'])
+@token_required
 def scan_qr():
     if cursor is None:
         return jsonify({"status": "error", "message": "Database connection error"}), 500
@@ -1319,6 +1329,7 @@ def scan_qr():
 # OCR Screenshot Scanner Endpoint
 @app.route('/scan_ocr', methods=['POST'])
 @app.route('/api/v1/scan/image', methods=['POST'])
+@token_required
 def scan_ocr():
     if cursor is None:
         return jsonify({"status": "error", "message": "Database connection error"}), 500
@@ -1503,6 +1514,7 @@ def sms():
 # ---------------- UPI CHECK ----------------
 @app.route('/check_upi', methods=['POST'])
 @app.route('/api/v1/scan/upi', methods=['POST'])
+@token_required
 def check_upi():
 
     if cursor is None:
@@ -1570,6 +1582,7 @@ def check_upi():
 # ---------------- PHONE CHECK ----------------
 @app.route('/check_phone', methods=['POST'])
 @app.route('/api/v1/scan/phone', methods=['POST'])
+@token_required
 def check_phone():
     if cursor is None:
         return jsonify({"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."})
@@ -1694,6 +1707,7 @@ def mobile_app():
 # ---------------- URL CHECK ----------------
 @app.route('/check_url', methods=['POST'])
 @app.route('/api/v1/scan/url', methods=['POST'])
+@token_required
 def check_url():
 
     if cursor is None:
@@ -1790,6 +1804,7 @@ def check_url():
 # ---------------- SMS CHECK ----------------
 @app.route('/check_sms', methods=['POST'])
 @app.route('/api/v1/scan/sms', methods=['POST'])
+@token_required
 def check_sms():
 
     if cursor is None:
@@ -1876,6 +1891,7 @@ def report_page():
 
 @app.route('/report_scam', methods=['POST'])
 @app.route('/api/v1/reports', methods=['POST'])
+@token_required
 def report_scam():
     if 'user' not in session and not get_auth_user_id():
         return jsonify({"status": "error", "message": "Login required to report scams"}), 401

@@ -10,6 +10,9 @@ class AuthRepository(context: Context) {
     
     suspend fun register(name: String, email: String, pass: String) = 
         api.register(mapOf("name" to name, "email" to email, "password" to pass))
+
+    suspend fun verifyRegistration(email: String, otp: String) = 
+        api.verifyRegistration(mapOf("email" to email, "otp" to otp))
     
     suspend fun getProfile() = api.getProfile()
 

@@ -23,6 +23,10 @@ fun ScamShieldApp(authViewModel: AuthViewModel, scamViewModel: ScamViewModel) {
         composable("register") {
             RegisterScreen(navController, authViewModel)
         }
+        composable("verify_registration/{email}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            VerifyRegistrationScreen(navController, authViewModel, email)
+        }
         composable("forgot") {
             ForgotScreen(navController, authViewModel)
         }

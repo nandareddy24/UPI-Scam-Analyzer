@@ -69,9 +69,13 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { viewModel.register(name, email, password) },
+            onClick = { 
+                viewModel.register(name, email, password) {
+                    navController.navigate("verify_registration/$email")
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            enabled = !isLoading && name.isNotBlank() && email.contains("@") && password.isNotBlank()
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)

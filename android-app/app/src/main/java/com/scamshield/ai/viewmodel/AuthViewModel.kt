@@ -67,20 +67,33 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun register(name: String, email: String, pass: String) {
+    fun register(name: String, email: String, pass: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
                 val response = repository.register(name, email, pass)
                 if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body?.status == "success") {
-                        // After register, we could auto-login or just send to login screen
-                        _error.value = "Registered successfully. Please login."
-                    } else {
-                        _error.value = body?.message ?: "Registration failed"
-                    }
+                    onSuccess()
+                } else {
+                    _error.value = parseError(response)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun verifyRegistration(email: String, otp: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val response = repository.verifyRegistration(email, otp)
+                if (response.isSuccessful) {
+                    onSuccess()
                 } else {
                     _error.value = parseError(response)
                 }
