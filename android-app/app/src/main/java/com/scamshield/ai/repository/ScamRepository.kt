@@ -28,7 +28,7 @@ class ScamRepository(context: Context) {
         return api.scanQr(body)
     }
 
-    suspend fun getHistory() = api.getHistory()
+    suspend fun getHistory(): retrofit2.Response<ScamShieldHistoryResponse> = api.getHistory()
     
     suspend fun reportScam(type: String, data: String, reason: String, proof: String?) = 
         api.reportScam(ReportRequest(type, data, reason, proof))

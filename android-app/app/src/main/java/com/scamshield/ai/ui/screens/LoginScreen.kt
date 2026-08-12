@@ -89,5 +89,9 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         TextButton(onClick = { navController.navigate("register") }) {
             Text("Don't have an account? Register")
         }
+        
+        TextButton(onClick = { navController.navigate("forgot") }) {
+            Text("Forgot Password?")
+        }
     }
 }

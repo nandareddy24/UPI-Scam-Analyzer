@@ -11,14 +11,24 @@ import com.scamshield.ai.viewmodel.ScamViewModel
 @Composable
 fun ScamShieldApp(authViewModel: AuthViewModel, scamViewModel: ScamViewModel) {
     val navController = rememberNavController()
-    val startDestination = if (authViewModel.isLoggedIn.value) "dashboard" else "login"
+    val startDestination = "splash"
 
     NavHost(navController = navController, startDestination = startDestination) {
+        composable("splash") {
+            SplashScreen(navController, authViewModel)
+        }
         composable("login") {
             LoginScreen(navController, authViewModel)
         }
         composable("register") {
             RegisterScreen(navController, authViewModel)
+        }
+        composable("forgot") {
+            ForgotScreen(navController, authViewModel)
+        }
+        composable("reset_password/{email}") { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+            ResetPasswordScreen(navController, authViewModel, email)
         }
         composable("dashboard") {
             DashboardScreen(navController, authViewModel, scamViewModel)
@@ -46,6 +56,15 @@ fun ScamShieldApp(authViewModel: AuthViewModel, scamViewModel: ScamViewModel) {
         }
         composable("ocr") {
             OcrScanScreen(navController, scamViewModel)
+        }
+        composable("profile") {
+            ProfileScreen(navController, authViewModel)
+        }
+        composable("settings") {
+            SettingsScreen(navController)
+        }
+        composable("admin") {
+            AdminScreen(navController, authViewModel)
         }
     }
 }

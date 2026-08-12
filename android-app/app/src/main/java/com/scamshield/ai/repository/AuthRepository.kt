@@ -12,4 +12,9 @@ class AuthRepository(context: Context) {
         api.register(mapOf("name" to name, "email" to email, "password" to pass))
     
     suspend fun getProfile() = api.getProfile()
+
+    suspend fun forgotPassword(email: String) = api.forgotPassword(mapOf("email" to email))
+
+    suspend fun resetPassword(email: String, otp: String, pass: String) = 
+        api.resetPassword(mapOf("email" to email, "otp" to otp, "password" to pass))
 }

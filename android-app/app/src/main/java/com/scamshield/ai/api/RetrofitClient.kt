@@ -8,9 +8,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    private const val BASE_URL = "http://192.168.31.243:3000/" // Default for local dev, should be changed to production URL
-
     fun getApiService(context: Context): ApiService {
+        val serverUrl = context.getString(com.scamshield.ai.R.string.server_url)
         val sessionManager = SessionManager(context)
         
         val logging = HttpLoggingInterceptor().apply {
@@ -29,7 +28,7 @@ object RetrofitClient {
             .build()
 
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(if (serverUrl.endsWith("/")) serverUrl else "$serverUrl/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

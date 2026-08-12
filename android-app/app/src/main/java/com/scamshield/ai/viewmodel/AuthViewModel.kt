@@ -16,6 +16,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoggedIn = mutableStateOf(sessionManager.isLoggedIn())
     val isLoggedIn: State<Boolean> = _isLoggedIn
 
+    val userName: String get() = sessionManager.getUserName() ?: "User"
+    val userEmail: String get() = sessionManager.getUserEmail() ?: ""
+    val isAdmin: Boolean get() = sessionManager.isAdmin()
+
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
 
@@ -32,7 +36,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     val body = response.body()
                     if (body?.status == "success" && body.token != null) {
                         sessionManager.saveToken(body.token)
-                        body.user?.let { sessionManager.saveUser(it.id, it.name, it.email) }
+                        body.user?.let { 
+                            sessionManager.saveUser(it.id, it.name, it.email, it.isAdmin) 
+                        }
                         _isLoggedIn.value = true
                     } else {
                         _error.value = body?.message ?: "Login failed"
@@ -74,5 +80,35 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun logout() {
         sessionManager.logout()
         _isLoggedIn.value = false
+    }
+
+    fun forgotPassword(email: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = repository.forgotPassword(email)
+                if (response.isSuccessful) onSuccess()
+                else _error.value = response.body()?.message ?: "Request failed"
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun resetPassword(email: String, otp: String, pass: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = repository.resetPassword(email, otp, pass)
+                if (response.isSuccessful) onSuccess()
+                else _error.value = response.body()?.message ?: "Reset failed"
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 }

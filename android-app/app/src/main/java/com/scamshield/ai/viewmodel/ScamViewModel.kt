@@ -5,8 +5,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.scamshield.ai.model.HistoryItem
-import com.scamshield.ai.model.ScanResponse
+import com.scamshield.ai.model.*
 import com.scamshield.ai.repository.ScamRepository
 import kotlinx.coroutines.launch
 import java.io.File
@@ -57,9 +56,10 @@ class ScamViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val response = repository.getHistory()
+                val response: retrofit2.Response<com.scamshield.ai.model.ScamShieldHistoryResponse> = repository.getHistory()
                 if (response.isSuccessful) {
-                    _history.value = response.body() ?: emptyList()
+                    val data = response.body()
+                    _history.value = data?.items ?: emptyList()
                 }
             } catch (e: Exception) {
                 _error.value = e.message

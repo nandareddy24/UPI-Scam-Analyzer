@@ -1,15 +1,9 @@
 <resources>
-    <string name="app_name">ScamShield</string>
+    <string name="app_name">Scam Shield AI</string>
 
-    <!-- 
-        ========================================================================
-        WI-FI SERVER CONFIGURATION
-        ========================================================================
-        Configure your PC's Wi-Fi IP address here.
-        Find it by running 'ipconfig' on your PC.
-        ========================================================================
-    -->
-    <string name="server_url">http://192.168.31.243:3000</string>
+    <!-- Production Backend URL (HTTPS recommended) -->
+    <string name="server_url">https://upi-scam-analyzer.onrender.com</string>
 
-    <string name="offline_message">Unable to connect. Please try again.</string>
+    <string name="offline_message">No internet connection. Please check your network.</string>
+    <string name="error_generic">Something went wrong. Please try again later.</string>
 </resources>

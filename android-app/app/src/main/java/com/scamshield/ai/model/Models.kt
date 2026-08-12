@@ -38,6 +38,11 @@ data class ScanResponse(
     val confidence: Int?
 )
 
+data class ScamShieldHistoryResponse(
+    val status: String,
+    val items: List<HistoryItem>
+)
+
 data class HistoryItem(
     val type: String,
     val data: String,

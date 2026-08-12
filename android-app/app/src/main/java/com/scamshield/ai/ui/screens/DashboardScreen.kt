@@ -23,7 +23,7 @@ data class DashboardItem(val title: String, val icon: ImageVector, val route: St
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, scamViewModel: ScamViewModel) {
-    val items = listOf(
+    val items = mutableListOf(
         DashboardItem("UPI Check", Icons.Default.AccountBalance, "upi"),
         DashboardItem("Phone Check", Icons.Default.Phone, "phone"),
         DashboardItem("SMS Analyze", Icons.Default.Message, "sms"),
@@ -31,16 +31,22 @@ fun DashboardScreen(navController: NavController, authViewModel: AuthViewModel, 
         DashboardItem("QR Scanner", Icons.Default.QrCodeScanner, "qr"),
         DashboardItem("Image/OCR", Icons.Default.Image, "ocr"),
         DashboardItem("History", Icons.Default.History, "history"),
-        DashboardItem("Report", Icons.Default.Report, "report")
+        DashboardItem("Report", Icons.Default.Report, "report"),
+        DashboardItem("Profile", Icons.Default.Person, "profile"),
+        DashboardItem("Settings", Icons.Default.Settings, "settings")
     )
+
+    if (authViewModel.isAdmin) {
+        items.add(DashboardItem("Admin Panel", Icons.Default.AdminPanelSettings, "admin"))
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Scam Shield Dashboard") },
                 actions = {
-                    IconButton(onClick = { authViewModel.logout(); navController.navigate("login") { popUpTo(0) } }) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                    IconButton(onClick = { navController.navigate("profile") }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
                     }
                 }
             )

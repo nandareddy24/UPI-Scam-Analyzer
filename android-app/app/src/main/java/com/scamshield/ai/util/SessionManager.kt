@@ -26,13 +26,19 @@ class SessionManager(context: Context) {
         return prefs.getString("auth_token", null)
     }
 
-    fun saveUser(id: Int, name: String, email: String) {
+    fun saveUser(id: Int, name: String, email: String, isAdmin: Boolean) {
         prefs.edit().apply {
             putInt("user_id", id)
             putString("user_name", name)
             putString("user_email", email)
+            putBoolean("is_admin", isAdmin)
         }.apply()
     }
+
+    fun isAdmin(): Boolean = prefs.getBoolean("is_admin", false)
+
+    fun getUserEmail(): String? = prefs.getString("user_email", null)
+    fun getUserName(): String? = prefs.getString("user_name", null)
 
     fun logout() {
         prefs.edit().clear().apply()

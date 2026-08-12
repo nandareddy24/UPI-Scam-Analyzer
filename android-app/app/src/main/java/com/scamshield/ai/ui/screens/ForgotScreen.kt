@@ -16,6 +16,7 @@ import com.scamshield.ai.viewmodel.AuthViewModel
 fun ForgotScreen(navController: NavController, viewModel: AuthViewModel) {
     var email by remember { mutableStateOf("") }
     val isLoading by viewModel.isLoading
+    val error by viewModel.error
 
     Scaffold(
         topBar = {
@@ -38,12 +39,22 @@ fun ForgotScreen(navController: NavController, viewModel: AuthViewModel) {
                 label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth()
             )
+            error?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
+            }
+            
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = { /* Implement forgot pass logic */ },
-                modifier = Modifier.fillMaxWidth()
+                onClick = { 
+                    viewModel.forgotPassword(email) {
+                        navController.navigate("reset_password/$email")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading && email.contains("@")
             ) {
-                Text("Send Reset OTP")
+                if (isLoading) CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                else Text("Send Reset OTP")
             }
         }
     }

@@ -35,16 +35,16 @@ interface ApiService {
     suspend fun scanUrl(@Body request: ScanRequest): Response<ScanResponse>
 
     @Multipart
-    @POST("scan_ocr")
+    @POST("api/v1/scan/image")
     suspend fun scanOcr(@Part screenshot: MultipartBody.Part): Response<ScanResponse>
 
     @Multipart
-    @POST("scan_qr")
+    @POST("api/v1/scan/qr")
     suspend fun scanQr(@Part qr_image: MultipartBody.Part): Response<ScanResponse>
 
-    @GET("api/v1/mobile/history")
-    suspend fun getHistory(): Response<List<HistoryItem>>
+    @GET("api/v1/scans/history")
+    suspend fun getHistory(): Response<ScamShieldHistoryResponse>
 
-    @POST("report_scam")
+    @POST("api/v1/reports")
     suspend fun reportScam(@Body request: ReportRequest): Response<GenericResponse>
 }

@@ -809,13 +809,7 @@ def verify_reset_otp():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
 
-    # If already logged in, redirect to appropriate dashboard
-    if 'user' in session:
-        user_agent = request.headers.get('User-Agent', '').lower()
-        is_mobile = request.args.get('mobile') == '1' or "scamshieldandroid" in user_agent
-        if is_mobile:
-            return redirect('/mobile_app')
-        return redirect('/dashboard')
+
 
     if cursor is None:
         return render_template("login.html", error="Database connection unavailable. Please check system status.")
@@ -1029,10 +1023,7 @@ def dashboard():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users to the mobile dashboard
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if "scamshieldandroid" in user_agent:
-        return redirect('/mobile_app')
+
 
     total = 0
     safe = 0
@@ -1172,10 +1163,7 @@ def history():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users to the mobile dashboard with history screen
-    user_agent = request.headers.get('User-Agent', '')
-    if "ScamShieldAndroid" in user_agent:
-        return redirect('/mobile_app?screen=history')
+
 
     scans = []
     is_admin = (session['user'] == ADMIN_EMAIL)
@@ -1255,20 +1243,23 @@ def ocr_qr_page():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if "scamshieldandroid" in user_agent:
-        return redirect('/mobile_app?screen=scan&mode=OCR')
+
 
     return render_template("ocr_qr.html", user=session['user'])
 
 # QR Code Fraud Scanner Endpoint
 @app.route('/scan_qr', methods=['POST'])
+@app.route('/api/v1/scan/qr', methods=['POST'])
 def scan_qr():
     if cursor is None:
         return jsonify({"status": "error", "message": "Database connection error"}), 500
 
-    raw_payload = request.form.get('payload', '').strip()
+    raw_payload = ""
+    # Support both form-data (web/mobile) and JSON (mobile)
+    if request.is_json:
+        raw_payload = request.json.get('payload', '').strip()
+    else:
+        raw_payload = request.form.get('payload', '').strip()
 
     if not raw_payload and 'qr_image' in request.files:
         file = request.files['qr_image']
@@ -1295,15 +1286,23 @@ def scan_qr():
 
 # OCR Screenshot Scanner Endpoint
 @app.route('/scan_ocr', methods=['POST'])
+@app.route('/api/v1/scan/image', methods=['POST'])
 def scan_ocr():
     if cursor is None:
         return jsonify({"status": "error", "message": "Database connection error"}), 500
 
-    if 'screenshot' not in request.files:
+    file_bytes = None
+    if 'screenshot' in request.files:
+        file = request.files['screenshot']
+        file_bytes = file.read()
+    elif 'image' in request.files:
+        file = request.files['image']
+        file_bytes = file.read()
+
+    if not file_bytes:
         return jsonify({"status": "error", "message": "Please upload a screenshot image file"}), 400
 
-    file = request.files['screenshot']
-    file_bytes = file.read()
+    # ... rest of logic remains similar but ensures JSON response
 
     extracted_text = ""
     qr_payload = decode_qr_from_image(file_bytes)
@@ -1436,10 +1435,7 @@ def upi():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if "scamshieldandroid" in user_agent:
-        return redirect('/mobile_app?screen=scan&mode=UPI')
+
 
     return render_template(
         "upi.html",
@@ -1452,10 +1448,7 @@ def url_page():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if "scamshieldandroid" in user_agent:
-        return redirect('/mobile_app?screen=scan&mode=URL')
+
 
     return render_template(
         "url.html",
@@ -1468,10 +1461,7 @@ def sms():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if "scamshieldandroid" in user_agent:
-        return redirect('/mobile_app?screen=scan&mode=SMS')
+
 
     return render_template(
         "sms.html",
@@ -1628,10 +1618,7 @@ def extension_page():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if "scamshieldandroid" in user_agent:
-        return redirect('/mobile_app?screen=extension')
+
 
     return render_template("extension.html", user=session['user'])
 
@@ -1851,23 +1838,28 @@ def report_page():
     if 'user' not in session:
         return redirect('/login')
 
-    # Auto-redirect mobile app users to the mobile dashboard with report screen
-    user_agent = request.headers.get('User-Agent', '')
-    if "ScamShieldAndroid" in user_agent:
-        return redirect('/mobile_app?screen=report')
+
 
     return render_template("report.html", user=session['user'])
 
 @app.route('/report_scam', methods=['POST'])
+@app.route('/api/v1/reports', methods=['POST'])
 def report_scam():
-    if 'user' not in session:
+    if 'user' not in session and not get_auth_user_id():
         return jsonify({"status": "error", "message": "Login required to report scams"}), 401
     
-    req = request.get_json(silent=True) or {}
-    data = req.get('data', '').strip()
-    type_ = req.get('type', '').upper().strip()
-    reason = req.get('reason', 'Reported by user as fraud').strip()
-    proof = req.get('proof', '').strip()
+    # Support both JSON and Form Data
+    if request.is_json:
+        req = request.get_json(silent=True) or {}
+        data = req.get('data', '').strip()
+        type_ = req.get('type', '').upper().strip()
+        reason = req.get('reason', 'Reported by user as fraud').strip()
+        proof = req.get('proof', '').strip()
+    else:
+        data = request.form.get('data', '').strip()
+        type_ = request.form.get('type', '').upper().strip()
+        reason = request.form.get('reason', 'Reported by user as fraud').strip()
+        proof = request.form.get('proof', '').strip()
 
     if type_ in ['WEBSITE', 'LINK']:
         type_ = 'URL'
@@ -1916,19 +1908,18 @@ def api_v1_analyze():
 
 # ---------------- MOBILE API ----------------
 
+@app.route('/api/v1/scans/history', methods=['GET'])
 @app.route('/api/v1/mobile/history')
+@token_required
 def api_mobile_history():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    uid = get_auth_user_id()
+    uid = request.user_id
     try:
-        cursor.execute("SELECT type, input_data, score, result, created_at FROM scans WHERE user_id=%s ORDER BY id DESC LIMIT 20", (uid,))
+        cursor.execute("SELECT type, input_data, score, result, created_at FROM scans WHERE user_id=%s ORDER BY id DESC LIMIT 50", (uid,))
         rows = cursor.fetchall()
         scans = [{"type": r[0], "data": r[1], "score": r[2], "result": r[3], "date": str(r[4])} for r in rows]
-        return jsonify(scans)
+        return jsonify({"status": "success", "items": scans})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
