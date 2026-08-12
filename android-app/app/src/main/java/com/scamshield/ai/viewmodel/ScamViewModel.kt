@@ -55,12 +55,20 @@ class ScamViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun <T> parseError(response: retrofit2.Response<T>): String {
+        val fallback = when (response.code()) {
+            401 -> "Invalid credentials or unauthorized access"
+            403 -> "Not authorized"
+            404 -> "Resource not found"
+            500 -> "Server error"
+            503 -> "Service unavailable"
+            else -> "Server error: ${response.code()}"
+        }
         return try {
             val errorBody = response.errorBody()?.string()
             val errorRes = gson.fromJson(errorBody, GenericResponse::class.java)
-            errorRes.message
+            errorRes.message ?: fallback
         } catch (e: Exception) {
-            "Server error: ${response.code()}"
+            fallback
         }
     }
 

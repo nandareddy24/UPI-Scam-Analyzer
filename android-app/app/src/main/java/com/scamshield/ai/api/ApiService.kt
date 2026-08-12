@@ -50,4 +50,7 @@ interface ApiService {
 
     @POST("api/v1/reports")
     suspend fun reportScam(@Body request: ReportRequest): Response<GenericResponse>
+
+    @POST("api/v1/auth/logout")
+    suspend fun logout(): Response<GenericResponse>
 }

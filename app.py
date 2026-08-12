@@ -65,27 +65,40 @@ def token_required(f):
             if auth_header.startswith('Bearer '):
                 token = auth_header.split(" ")[1]
 
-        if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
+        if token:
+            try:
+                data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+                current_user_id = data['sub']
+                if cursor is not None:
+                    cursor.execute("SELECT email FROM users WHERE id=%s", (current_user_id,))
+                    row = cursor.fetchone()
+                    if not row:
+                        return jsonify({"status": "error", "message": "User not found!"}), 401
+                    request.user_email = row[0]
+                    request.user_id = current_user_id
+                    return f(*args, **kwargs)
+                else:
+                    return jsonify({"status": "error", "message": "Database connection unavailable"}), 503
+            except jwt.ExpiredSignatureError:
+                return jsonify({"status": "error", "message": "Token has expired!"}), 401
+            except jwt.InvalidTokenError:
+                return jsonify({"status": "error", "message": "Invalid token!"}), 401
+            except Exception as e:
+                return jsonify({"status": "error", "message": str(e)}), 401
 
-        try:
-            data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
-            current_user_id = data['sub']
-            # Fetch user email from ID
-            cursor.execute("SELECT email FROM users WHERE id=%s", (current_user_id,))
-            row = cursor.fetchone()
-            if not row:
-                return jsonify({'message': 'User not found!'}), 401
-            request.user_email = row[0]
-            request.user_id = current_user_id
-        except jwt.ExpiredSignatureError:
-            return jsonify({'message': 'Token has expired!'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'message': 'Invalid token!'}), 401
-        except Exception as e:
-            return jsonify({'message': str(e)}), 401
+        # Fallback for web sessions when token is absent
+        if 'user' in session and cursor is not None:
+            try:
+                cursor.execute("SELECT id, email FROM users WHERE email=%s", (session['user'],))
+                row = cursor.fetchone()
+                if row:
+                    request.user_id = row[0]
+                    request.user_email = row[1]
+                    return f(*args, **kwargs)
+            except Exception:
+                pass
 
-        return f(*args, **kwargs)
+        return jsonify({"status": "error", "message": "Authentication required. Bearer token missing or invalid."}), 401
     return decorated
 
 
@@ -132,34 +145,43 @@ class DBWrapper:
         self.connect()
 
     def connect(self):
+        db_url = os.getenv("DATABASE_URL")
         db_host = os.getenv("DB_HOST")
         db_name = os.getenv("DB_NAME")
-        is_production = os.getenv("RENDER", "false").lower() == "true" or os.getenv("DB_REQUIRED", "false").lower() == "true"
+        app_env = os.getenv("APP_ENV", "").lower()
+        require_postgres = os.getenv("REQUIRE_POSTGRES", "").lower() == "true"
+        is_render = os.getenv("RENDER", "").lower() == "true"
+        is_production = app_env == "production" or require_postgres or is_render or bool(db_url)
 
-        if db_host and db_name:
+        if db_url or (db_host and db_name):
             try:
                 import psycopg2
-                self.conn = psycopg2.connect(
-                    host=db_host,
-                    port=os.getenv("DB_PORT", "5432"),
-                    database=db_name,
-                    user=os.getenv("DB_USER"),
-                    password=os.getenv("DB_PASSWORD")
-                )
+                if db_url:
+                    if db_url.startswith("postgres://"):
+                        db_url = db_url.replace("postgres://", "postgresql://", 1)
+                    self.conn = psycopg2.connect(db_url)
+                else:
+                    self.conn = psycopg2.connect(
+                        host=db_host,
+                        port=os.getenv("DB_PORT", "5432"),
+                        database=db_name,
+                        user=os.getenv("DB_USER"),
+                        password=os.getenv("DB_PASSWORD")
+                    )
                 self.db_type = "postgres"
                 print("[OK] PostgreSQL Connected Successfully")
                 self._init_tables()
                 return
             except Exception as e:
-                print("[WARN] PostgreSQL Connection Error:", str(e))
+                print(f"[CRITICAL] PostgreSQL Connection Error: {str(e)}")
                 if is_production:
-                    print("[CRITICAL] Production Database Required. Failing.")
-                    raise e
-                print("[WARN] Falling back to SQLite database...")
+                    print("[CRITICAL] Production Database Required. Halting execution.")
+                    raise RuntimeError(f"PostgreSQL Connection Error in Production: {e}")
+                print("[WARN] Falling back to SQLite database for local development...")
 
         if is_production:
-             print("[CRITICAL] DB_HOST/DB_NAME missing in production. Failing.")
-             raise Exception("Database configuration missing")
+            print("[CRITICAL] PostgreSQL Database Configuration Missing in Production. Halting execution.")
+            raise RuntimeError("DATABASE_URL or DB_HOST/DB_NAME is required in production mode.")
 
         try:
             db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
@@ -450,6 +472,15 @@ def api_health():
         "database": db.db_type if db.conn else "disconnected"
     })
 
+@app.route('/api/v1/debug/otps', methods=['GET'])
+def api_debug_otps():
+    if not app.debug:
+        return jsonify({"error": "Debug mode disabled"}), 403
+    return jsonify({
+        "registration_otps": {k: v[0] for k, v in otp_storage.items()},
+        "reset_otps": {k: v[0] for k, v in reset_otp_storage.items()}
+    })
+
 # ---------------- EMAIL HELPER ----------------
 def generate_otp_email_html(otp_code, action_name="Account Registration"):
     return f"""<!DOCTYPE html>
@@ -636,7 +667,11 @@ def api_register():
     html = generate_otp_email_html(otp, action_name="Mobile Account Registration")
     sent = send_email(email, "Scam Shield AI - Registration OTP", f"Your OTP is: {otp}", html_content=html)
 
-    return jsonify({"status": "success", "message": "OTP sent to email", "email": email})
+    response = {"status": "success", "message": "OTP sent to email", "email": email}
+    if app.debug:
+        response["debug_otp"] = otp
+
+    return jsonify(response)
 
 @app.route('/api/v1/auth/verify-registration', methods=['POST'])
 def api_verify_registration():
@@ -685,7 +720,7 @@ def api_login():
     user = cursor.fetchone()
 
     if not user:
-        return jsonify({"status": "error", "message": "User not found"}), 404
+        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
 
     stored = user[3]
     if isinstance(stored, memoryview):
@@ -695,19 +730,15 @@ def api_login():
 
     try:
         if bcrypt.checkpw(password.encode('utf-8'), stored):
-            # Check if admin
-            cursor.execute("SELECT email FROM users WHERE id=%s", (user[0],))
-            email_row = cursor.fetchone()
-            is_admin = email_row and email_row[0] == ADMIN_EMAIL
-
+            is_admin = (user[2] == ADMIN_EMAIL)
             token = create_token(user[0])
             return jsonify({
                 "status": "success",
                 "message": "Login successful",
                 "token": token,
                 "user": {"id": user[0], "name": user[1], "email": user[2], "is_admin": is_admin}
-            })
-        return jsonify({"status": "error", "message": "Invalid password"}), 401
+            }), 200
+        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
     except Exception as e:
         return jsonify({"status": "error", "message": "Login failed"}), 500
 
@@ -939,7 +970,11 @@ def api_forgot_password():
     html = generate_otp_email_html(otp, action_name="Password Reset")
     send_email(email, "Password Reset OTP", f"Your OTP is: {otp}", html_content=html)
 
-    return jsonify({"status": "success", "message": "Reset OTP sent to your email"})
+    response = {"status": "success", "message": "Reset OTP sent to your email"}
+    if app.debug:
+        response["debug_otp"] = otp
+
+    return jsonify(response)
 
 @app.route('/api/v1/auth/reset-password', methods=['POST'])
 def api_reset_password():

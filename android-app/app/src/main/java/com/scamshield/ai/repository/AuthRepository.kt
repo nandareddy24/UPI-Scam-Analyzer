@@ -20,4 +20,6 @@ class AuthRepository(context: Context) {
 
     suspend fun resetPassword(email: String, otp: String, pass: String) = 
         api.resetPassword(mapOf("email" to email, "otp" to otp, "password" to pass))
+
+    suspend fun logout() = try { api.logout() } catch (e: Exception) { null }
 }

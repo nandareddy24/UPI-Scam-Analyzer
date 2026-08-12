@@ -58,12 +58,20 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun <T> parseError(response: retrofit2.Response<T>): String {
+        val fallback = when (response.code()) {
+            401 -> "Invalid credentials or unauthorized access"
+            403 -> "Not authorized"
+            404 -> "Resource not found"
+            500 -> "Server error"
+            503 -> "Service unavailable"
+            else -> "Server error: ${response.code()}"
+        }
         return try {
             val errorBody = response.errorBody()?.string()
             val errorRes = gson.fromJson(errorBody, GenericResponse::class.java)
-            errorRes.message ?: "Server error: ${response.code()}"
+            errorRes.message ?: fallback
         } catch (e: Exception) {
-            "Server error: ${response.code()}"
+            fallback
         }
     }
 
@@ -106,8 +114,16 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
-        sessionManager.logout()
-        _isLoggedIn.value = false
+        viewModelScope.launch {
+            try {
+                repository.logout()
+            } catch (e: Exception) {
+                // Ignore network failure on logout
+            } finally {
+                sessionManager.logout()
+                _isLoggedIn.value = false
+            }
+        }
     }
 
     fun forgotPassword(email: String, onSuccess: () -> Unit) {
