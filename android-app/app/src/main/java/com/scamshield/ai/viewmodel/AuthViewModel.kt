@@ -7,11 +7,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.scamshield.ai.repository.AuthRepository
 import com.scamshield.ai.util.SessionManager
+import com.scamshield.ai.model.GenericResponse
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AuthRepository(application)
     private val sessionManager = SessionManager(application)
+    private val gson = Gson()
 
     private val _isLoggedIn = mutableStateOf(sessionManager.isLoggedIn())
     val isLoggedIn: State<Boolean> = _isLoggedIn
@@ -44,13 +47,23 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         _error.value = body?.message ?: "Login failed"
                     }
                 } else {
-                    _error.value = "Error: ${response.code()}"
+                    _error.value = parseError(response)
                 }
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun <T> parseError(response: retrofit2.Response<T>): String {
+        return try {
+            val errorBody = response.errorBody()?.string()
+            val errorRes = gson.fromJson(errorBody, GenericResponse::class.java)
+            errorRes.message ?: "Server error: ${response.code()}"
+        } catch (e: Exception) {
+            "Server error: ${response.code()}"
         }
     }
 
@@ -68,9 +81,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         _error.value = body?.message ?: "Registration failed"
                     }
+                } else {
+                    _error.value = parseError(response)
                 }
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -88,9 +103,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val response = repository.forgotPassword(email)
                 if (response.isSuccessful) onSuccess()
-                else _error.value = response.body()?.message ?: "Request failed"
+                else _error.value = parseError(response)
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -103,9 +118,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val response = repository.resetPassword(email, otp, pass)
                 if (response.isSuccessful) onSuccess()
-                else _error.value = response.body()?.message ?: "Reset failed"
+                else _error.value = parseError(response)
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

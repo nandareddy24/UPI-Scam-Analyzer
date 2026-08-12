@@ -7,11 +7,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.scamshield.ai.model.*
 import com.scamshield.ai.repository.ScamRepository
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
 import java.io.File
 
 class ScamViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ScamRepository(application)
+    private val gson = Gson()
 
     private val _scanResult = mutableStateOf<ScanResponse?>(null)
     val scanResult: State<ScanResponse?> = _scanResult
@@ -42,13 +44,23 @@ class ScamViewModel(application: Application) : AndroidViewModel(application) {
                 if (response.isSuccessful) {
                     _scanResult.value = response.body()
                 } else {
-                    _error.value = "Scan failed: ${response.message()}"
+                    _error.value = parseError(response)
                 }
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun <T> parseError(response: retrofit2.Response<T>): String {
+        return try {
+            val errorBody = response.errorBody()?.string()
+            val errorRes = gson.fromJson(errorBody, GenericResponse::class.java)
+            errorRes.message
+        } catch (e: Exception) {
+            "Server error: ${response.code()}"
         }
     }
 
@@ -60,9 +72,11 @@ class ScamViewModel(application: Application) : AndroidViewModel(application) {
                 if (response.isSuccessful) {
                     val data = response.body()
                     _history.value = data?.items ?: emptyList()
+                } else {
+                    _error.value = parseError(response)
                 }
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -72,10 +86,16 @@ class ScamViewModel(application: Application) : AndroidViewModel(application) {
     fun reportScam(type: String, data: String, reason: String, proof: String?) {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
             try {
-                repository.reportScam(type, data, reason, proof)
+                val response = repository.reportScam(type, data, reason, proof)
+                if (response.isSuccessful) {
+                    _error.value = "Report submitted successfully"
+                } else {
+                    _error.value = parseError(response)
+                }
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

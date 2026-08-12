@@ -87,11 +87,27 @@ def token_required(f):
     return decorated
 
 def get_auth_user_id():
-    # Helper to get user ID from either session or token
-    if 'user' in session:
-        return get_auth_user_id()
-    if hasattr(request, 'user_id'):
-        return request.user_id
+    # 1. Try to get from Authorization header (Token-based / Android)
+    if 'Authorization' in request.headers:
+        auth_header = request.headers['Authorization']
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(" ")[1]
+            try:
+                data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
+                return data['sub']
+            except:
+                pass
+
+    # 2. Try to get from Session (Web)
+    if 'user' in session and cursor is not None:
+        try:
+            # We use the email from session to lookup the ID
+            cursor.execute("SELECT id FROM users WHERE email=%s", (session['user'],))
+            row = cursor.fetchone()
+            if row:
+                return row[0]
+        except Exception as e:
+            print("[WARN] User ID fetch exception:", e)
     return None
 
 # ---------------- DATABASE ----------------
@@ -139,6 +155,7 @@ class DBWrapper:
     def connect(self):
         db_host = os.getenv("DB_HOST")
         db_name = os.getenv("DB_NAME")
+        is_production = os.getenv("RENDER", "false").lower() == "true" or os.getenv("DB_REQUIRED", "false").lower() == "true"
 
         if db_host and db_name:
             try:
@@ -156,7 +173,14 @@ class DBWrapper:
                 return
             except Exception as e:
                 print("[WARN] PostgreSQL Connection Error:", str(e))
+                if is_production:
+                    print("[CRITICAL] Production Database Required. Failing.")
+                    raise e
                 print("[WARN] Falling back to SQLite database...")
+
+        if is_production:
+             print("[CRITICAL] DB_HOST/DB_NAME missing in production. Failing.")
+             raise Exception("Database configuration missing")
 
         try:
             db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
@@ -445,6 +469,14 @@ def api_admin_reports():
 @app.route('/')
 def home():
     return redirect('/login')
+
+@app.route('/api/v1/health', methods=['GET'])
+def api_health():
+    return jsonify({
+        "status": "ok",
+        "service": "UPI Scam Analyzer API",
+        "database": db.db_type if db.conn else "disconnected"
+    })
 
 # ---------------- EMAIL HELPER ----------------
 def generate_otp_email_html(otp_code, action_name="Account Registration"):
