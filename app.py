@@ -1,7 +1,10 @@
 import email
 import jwt
 import datetime
+import warnings
+warnings.filterwarnings("ignore")
 from functools import wraps
+
 
 from flask import Flask, render_template, request, redirect, jsonify, session
 from flask_cors import CORS
@@ -148,10 +151,7 @@ class DBWrapper:
         db_url = os.getenv("DATABASE_URL")
         db_host = os.getenv("DB_HOST")
         db_name = os.getenv("DB_NAME")
-        app_env = os.getenv("APP_ENV", "").lower()
-        require_postgres = os.getenv("REQUIRE_POSTGRES", "").lower() == "true"
-        is_render = os.getenv("RENDER", "").lower() == "true"
-        is_production = app_env == "production" or require_postgres or is_render or bool(db_url)
+        require_postgres = os.getenv("REQUIRE_POSTGRES", "false").lower() == "true"
 
         if db_url or (db_host and db_name):
             try:
@@ -174,14 +174,14 @@ class DBWrapper:
                 return
             except Exception as e:
                 print(f"[CRITICAL] PostgreSQL Connection Error: {str(e)}")
-                if is_production:
-                    print("[CRITICAL] Production Database Required. Halting execution.")
-                    raise RuntimeError(f"PostgreSQL Connection Error in Production: {e}")
-                print("[WARN] Falling back to SQLite database for local development...")
+                if require_postgres:
+                    print("[CRITICAL] PostgreSQL Required. Halting execution.")
+                    raise RuntimeError(f"PostgreSQL Connection Error: {e}")
+                print("[WARN] Falling back to SQLite database...")
 
-        if is_production:
-            print("[CRITICAL] PostgreSQL Database Configuration Missing in Production. Halting execution.")
-            raise RuntimeError("DATABASE_URL or DB_HOST/DB_NAME is required in production mode.")
+        if require_postgres:
+            print("[CRITICAL] PostgreSQL Database Configuration Missing. Halting execution.")
+            raise RuntimeError("DATABASE_URL or DB_HOST/DB_NAME is required when REQUIRE_POSTGRES is true.")
 
         try:
             db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
