@@ -73,12 +73,12 @@ def token_required(f):
                 data = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
                 current_user_id = data['sub']
                 if cursor is not None:
-                    cursor.execute("SELECT email FROM users WHERE id=%s", (current_user_id,))
+                    cursor.execute("SELECT id, email FROM users WHERE id=%s", (current_user_id,))
                     row = cursor.fetchone()
                     if not row:
                         return jsonify({"status": "error", "message": "User not found!"}), 401
-                    request.user_email = row[0]
-                    request.user_id = current_user_id
+                    request.user_id = row[0]
+                    request.user_email = row[1]
                     return f(*args, **kwargs)
                 else:
                     return jsonify({"status": "error", "message": "Database connection unavailable"}), 503
@@ -244,6 +244,20 @@ class DBWrapper:
         )
         """)
 
+        cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS otp_verifications (
+            id {pk_type},
+            email VARCHAR(255),
+            purpose VARCHAR(50),
+            otp_hash TEXT,
+            expires_at TIMESTAMP,
+            attempts INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            verified BOOLEAN DEFAULT FALSE,
+            payload_data TEXT
+        )
+        """)
+
         try:
             cur.execute("ALTER TABLE community_reports ADD COLUMN proof_data TEXT")
         except Exception:
@@ -284,9 +298,72 @@ except:
     upi_model = None
     upi_vectorizer = None
 
-# ---------------- OTP STORAGE ----------------
-otp_storage = {}
-reset_otp_storage = {}
+# ---------------- OTP PERSISTENCE (DB-BACKED) ----------------
+import json
+
+def save_db_otp(email, purpose, otp_code, payload_data=None):
+    if cursor is None:
+        return False
+    otp_hash = bcrypt.hashpw(otp_code.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    try:
+        payload_str = json.dumps(payload_data) if payload_data is not None else None
+        cursor.execute(
+            "INSERT INTO otp_verifications (email, purpose, otp_hash, expires_at, payload_data) VALUES (%s, %s, %s, %s, %s)",
+            (email, purpose, otp_hash, expires_at, payload_str)
+        )
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"[ERROR] save_db_otp failed: {e}")
+        return False
+
+def verify_db_otp(email, purpose, otp_code):
+    if cursor is None:
+        return False, "Database connection unavailable", None
+
+    now = datetime.datetime.utcnow()
+    try:
+        cursor.execute(
+            "SELECT id, otp_hash, expires_at, attempts, payload_data FROM otp_verifications WHERE email=%s AND purpose=%s AND verified=False ORDER BY id DESC LIMIT 1",
+            (email, purpose)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False, "OTP session expired or not found. Please request a new OTP.", None
+
+        otp_id, stored_hash, expires_at, attempts, payload_json = row
+
+        if attempts is not None and attempts >= 5:
+            return False, "Too many incorrect OTP attempts. Please request a new OTP.", None
+
+        if isinstance(expires_at, str):
+            try:
+                expires_at = datetime.datetime.fromisoformat(expires_at)
+            except Exception:
+                pass
+
+        if expires_at and now > expires_at:
+            return False, "OTP has expired. Please request a new OTP.", None
+
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode('utf-8')
+        elif isinstance(stored_hash, memoryview):
+            stored_hash = stored_hash.tobytes()
+
+        if bcrypt.checkpw(otp_code.encode('utf-8'), stored_hash):
+            cursor.execute("UPDATE otp_verifications SET verified=True WHERE id=%s", (otp_id,))
+            db.commit()
+            payload = json.loads(payload_json) if payload_json else None
+            return True, "OTP verified successfully", payload
+        else:
+            cursor.execute("UPDATE otp_verifications SET attempts = attempts + 1 WHERE id=%s", (otp_id,))
+            db.commit()
+            return False, "Invalid 6-digit OTP code. Please try again.", None
+    except Exception as e:
+        print(f"[ERROR] verify_db_otp failed: {e}")
+        return False, str(e), None
+
 
 # ---------------- HELPER ----------------
 def get_result(score):
@@ -963,29 +1040,28 @@ def api_register():
     password = data.get('password', '')
 
     if not all([name, email, password]):
-        return jsonify({"status": "error", "message": "Missing fields"}), 400
+        return jsonify({"status": "error", "message": "Name, email, and password are required"}), 400
 
     cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
     if cursor.fetchone():
         return jsonify({"status": "error", "message": "Email already registered"}), 409
 
     otp = str(random.randint(100000, 999999))
-    expiry = time.time() + 600  # 10 minutes TTL
-    otp_storage[email] = (otp, name, password, expiry)
+    payload = {"name": name, "password": password}
+    if not save_db_otp(email, 'registration', otp, payload):
+        return jsonify({"status": "error", "message": "Failed to create registration session"}), 500
 
-    html = generate_otp_email_html(otp, action_name="Mobile Account Registration")
+    html = generate_otp_email_html(otp, action_name="Account Registration")
     sent = send_email(email, "Scam Shield AI - Registration OTP", f"Your OTP is: {otp}", html_content=html)
 
-    # TEMPORARY: Including debug_otp in the response to unblock registration
-    # In a real production app, this should be removed.
-    response = {
-        "status": "success",
-        "message": "OTP sent to email" if sent else "OTP generated (Email delivery failed)",
-        "email": email,
-        "debug_otp": otp
-    }
+    if not sent:
+        return jsonify({"status": "error", "message": "Unable to send OTP. Please try again later."}), 503
 
-    return jsonify(response)
+    return jsonify({
+        "status": "success",
+        "message": "OTP sent to email. Please verify to complete registration.",
+        "email": email
+    }), 200
 
 @app.route('/api/v1/auth/verify-registration', methods=['POST'])
 def api_verify_registration():
@@ -996,27 +1072,44 @@ def api_verify_registration():
     email = data.get('email', '').strip().lower()
     user_otp = data.get('otp', '').strip()
 
-    if email not in otp_storage:
-        return jsonify({"status": "error", "message": "Registration session not found"}), 404
+    if not email or not user_otp:
+        return jsonify({"status": "error", "message": "Email and OTP are required"}), 400
 
-    stored_data = otp_storage[email]
-    otp, name, password, expiry = stored_data
+    success, msg, payload = verify_db_otp(email, 'registration', user_otp)
+    if not success or not payload:
+        return jsonify({"status": "error", "message": msg}), 400
 
-    if time.time() > expiry:
-        otp_storage.pop(email, None)
-        return jsonify({"status": "error", "message": "OTP expired"}), 410
+    name = payload.get('name', '')
+    password = payload.get('password', '')
 
-    if user_otp != otp:
-        return jsonify({"status": "error", "message": "Invalid OTP"}), 401
+    cursor.execute("SELECT id FROM users WHERE email=%s", (email,))
+    existing = cursor.fetchone()
+    if existing:
+        user_id = existing[0]
+    else:
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        try:
+            cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed))
+            db.commit()
+            cursor.execute("SELECT id FROM users WHERE email=%s", (email,))
+            row = cursor.fetchone()
+            user_id = row[0]
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
 
-    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    try:
-        cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed))
-        db.commit()
-        otp_storage.pop(email, None)
-        return jsonify({"status": "success", "message": "Account verified and created successfully"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    token = create_token(user_id)
+    is_admin = (email == ADMIN_EMAIL)
+    return jsonify({
+        "status": "success",
+        "message": "Account verified and registered successfully!",
+        "token": token,
+        "user": {
+            "id": user_id,
+            "name": name,
+            "email": email,
+            "is_admin": is_admin
+        }
+    }), 200
 
 @app.route('/api/v1/auth/login', methods=['POST'])
 def api_login():
@@ -1278,20 +1371,20 @@ def api_forgot_password():
         return jsonify({"status": "error", "message": "Email not found"}), 404
 
     otp = str(random.randint(100000, 999999))
-    expiry = time.time() + 600
-    reset_otp_storage[email] = (otp, expiry)
+    if not save_db_otp(email, 'password_reset', otp):
+        return jsonify({"status": "error", "message": "Failed to create password reset session"}), 500
 
     html = generate_otp_email_html(otp, action_name="Password Reset")
     sent = send_email(email, "Password Reset OTP", f"Your OTP is: {otp}", html_content=html)
 
-    # TEMPORARY: Including debug_otp in the response to unblock password reset
-    response = {
-        "status": "success",
-        "message": "Reset OTP sent to your email" if sent else "Reset OTP generated (Email delivery failed)",
-        "debug_otp": otp
-    }
+    if not sent:
+        return jsonify({"status": "error", "message": "Unable to send OTP. Please try again later."}), 503
 
-    return jsonify(response)
+    return jsonify({
+        "status": "success",
+        "message": "Reset OTP sent to your email.",
+        "email": email
+    }), 200
 
 @app.route('/api/v1/auth/reset-password', methods=['POST'])
 def api_reset_password():
@@ -1300,29 +1393,23 @@ def api_reset_password():
 
     data = request.get_json(silent=True) or {}
     email = data.get('email', '').strip().lower()
-    otp = data.get('otp', '')
-    new_password = data.get('password', '')
+    otp = data.get('otp', '').strip()
+    new_password = data.get('new_password', '') or data.get('password', '')
 
     if not all([email, otp, new_password]):
-        return jsonify({"status": "error", "message": "Missing required fields"}), 400
+        return jsonify({"status": "error", "message": "Email, OTP, and new password are required"}), 400
 
-    if email not in reset_otp_storage:
-        return jsonify({"status": "error", "message": "Reset session expired"}), 400
-
-    stored_otp, expiry = reset_otp_storage[email]
-    if time.time() > expiry:
-        reset_otp_storage.pop(email)
-        return jsonify({"status": "error", "message": "OTP expired"}), 400
-
-    if otp != stored_otp:
-        return jsonify({"status": "error", "message": "Invalid OTP"}), 400
+    success, msg, _ = verify_db_otp(email, 'password_reset', otp)
+    if not success:
+        return jsonify({"status": "error", "message": msg}), 400
 
     hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    cursor.execute("UPDATE users SET password=%s WHERE email=%s", (hashed, email))
-    db.commit()
-    reset_otp_storage.pop(email)
-
-    return jsonify({"status": "success", "message": "Password updated successfully"})
+    try:
+        cursor.execute("UPDATE users SET password=%s WHERE email=%s", (hashed, email))
+        db.commit()
+        return jsonify({"status": "success", "message": "Password updated successfully! You can now login."}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # ---------------- FORGOT PASSWORD ----------------
 @app.route('/forgot', methods=['GET', 'POST'])
