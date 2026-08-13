@@ -2006,6 +2006,17 @@ def extension_page():
         return redirect('/login')
     return render_template("extension.html", user=session['user'])
 
+@app.route('/download_apk')
+@app.route('/api/v1/download/apk')
+def download_apk():
+    from flask import send_from_directory
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    apk_file = "app-release.apk"
+    if not os.path.exists(os.path.join(static_dir, apk_file)):
+        fallback_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flutter_app", "build", "app", "outputs", "flutter-apk")
+        return send_from_directory(fallback_dir, apk_file, as_attachment=True, download_name="ScamShieldAI.apk", mimetype="application/vnd.android.package-archive")
+    return send_from_directory(static_dir, apk_file, as_attachment=True, download_name="ScamShieldAI.apk", mimetype="application/vnd.android.package-archive")
+
 @app.route('/download_extension_zip')
 def download_extension_zip():
     if 'user' not in session:
