@@ -10,7 +10,7 @@ services:
       - key: APP_ENV
         value: production
       - key: REQUIRE_POSTGRES
-        value: "false"
+        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY

@@ -28,3 +28,4 @@ Jinja2
 Werkzeug
 openpyxl
 reportlab
+pytesseract

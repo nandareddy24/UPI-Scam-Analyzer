@@ -1111,6 +1111,43 @@ def api_verify_registration():
         }
     }), 200
 
+@app.route('/api/v1/auth/resend-otp', methods=['POST'])
+def api_resend_otp():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection failed"}), 503
+
+    data = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    purpose = data.get('purpose', 'registration').strip().lower()
+
+    if not email:
+        return jsonify({"status": "error", "message": "Email is required"}), 400
+
+    cursor.execute("""
+        SELECT payload FROM otp_verifications 
+        WHERE email=%s AND action_type=%s AND is_used=0 
+        ORDER BY id DESC LIMIT 1
+    """, (email, purpose))
+    row = cursor.fetchone()
+    payload = json.loads(row[0]) if (row and row[0]) else None
+
+    otp = str(random.randint(100000, 999999))
+    if not save_db_otp(email, purpose, otp, payload):
+        return jsonify({"status": "error", "message": "Failed to create new OTP session"}), 500
+
+    action_label = "Account Registration" if purpose == "registration" else "Password Reset"
+    html = generate_otp_email_html(otp, action_name=action_label)
+    sent = send_email(email, f"Scam Shield AI - Resent {action_label} OTP", f"Your OTP is: {otp}", html_content=html)
+
+    if not sent:
+        return jsonify({"status": "error", "message": "Unable to send OTP via email. Please try again later."}), 503
+
+    return jsonify({
+        "status": "success",
+        "message": f"Fresh OTP sent to {email}.",
+        "email": email
+    }), 200
+
 @app.route('/api/v1/auth/login', methods=['POST'])
 def api_login():
     if cursor is None:
@@ -1198,9 +1235,9 @@ def register():
             return render_template("register.html", error="This email address is already registered. Please sign in instead.", name=name, email=email)
 
         otp = str(random.randint(100000, 999999))
-        expiry = time.time() + 600  # 10 minutes TTL
-
-        otp_storage[email] = (otp, name, password, expiry)
+        payload = {"name": name, "password": password}
+        if not save_db_otp(email, 'registration', otp, payload):
+            return render_template("register.html", error="Failed to create registration session. Please try again.", name=name, email=email)
 
         html = generate_otp_email_html(otp, action_name="Account Registration")
         sent = send_email(
@@ -1209,8 +1246,6 @@ def register():
             f"Your OTP for registration is: {otp}",
             html_content=html
         )
-        if not sent:
-            print(f"REGISTRATION OTP for {email}: {otp}")
 
         return render_template(
             "otp.html",
@@ -1222,40 +1257,22 @@ def register():
 # ---------------- VERIFY REGISTRATION OTP ----------------
 @app.route('/verify_otp', methods=['POST'])
 def verify_otp():
+    email = request.form.get('email', '').strip().lower()
+    user_otp = request.form.get('otp', '').strip()
 
-    email = request.form.get('email', '')
-    user_otp = request.form.get('otp', '')
-
-    if email in otp_storage:
-
-        stored_data = otp_storage[email]
-        if len(stored_data) == 4:
-            otp, name, password, expiry = stored_data
-            if time.time() > expiry:
-                otp_storage.pop(email, None)
-                return render_template("otp.html", email=email, error="OTP expired. Please register again.")
-        else:
-            otp, name, password = stored_data
-
-        if user_otp == otp:
-
-            hashed = bcrypt.hashpw(
-                password.encode('utf-8'),
-                bcrypt.gensalt()
-            ).decode('utf-8')
-
-            cursor.execute(
-                "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
-                (name, email, hashed)
-            )
-
+    success, msg, payload = verify_db_otp(email, 'registration', user_otp)
+    if success and payload:
+        name = payload.get('name', '')
+        password = payload.get('password', '')
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        try:
+            cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed))
             db.commit()
-
-            otp_storage.pop(email, None)
-
             return render_template("login.html", success="Registration verified successfully! Please sign in with your credentials.", email=email)
+        except Exception as e:
+            return render_template("otp.html", email=email, error=f"Account creation failed: {e}")
 
-    return render_template("otp.html", email=email, error="Invalid 6-digit OTP code. Please check your email and try again.")
+    return render_template("otp.html", email=email, error=msg or "Invalid 6-digit OTP code. Please try again.")
 
 # ---------------- VERIFY RESET OTP ----------------
 @app.route('/verify_reset_otp', methods=['POST'])
@@ -1784,7 +1801,17 @@ def scan_ocr():
 
     uid = getattr(request, 'user_id', None)
     extracted_text = ""
+
+    try:
+        import pytesseract
+        img_pil = Image.open(BytesIO(file_bytes))
+        extracted_text = pytesseract.image_to_string(img_pil) or ""
+    except Exception as ocr_e:
+        print(f"[WARN] OCR pytesseract processing warning: {ocr_e}")
+
     qr_payload = decode_qr_from_image(file_bytes)
+    if qr_payload:
+        extracted_text += f"\n[QR PAYLOAD]: {qr_payload}"
 
     found_upis = re.findall(r'[\w.-]+@[\w.-]+', extracted_text)
     found_urls = re.findall(r'https?://[^\s]+', extracted_text)
@@ -1799,6 +1826,9 @@ def scan_ocr():
             found_upis.append(parsed_qr["vpa"])
         else:
             found_urls.append(qr_payload)
+
+    found_upis = list(set(found_upis))
+    found_urls = list(set(found_urls))
 
     for upi_item in found_upis:
         res = analyze_upi(upi_item, user_id=uid)
@@ -1823,6 +1853,7 @@ def scan_ocr():
         "status": "success",
         "score": max_score,
         "result": primary_result,
+        "extracted_text": extracted_text.strip(),
         "extracted_upis": found_upis,
         "extracted_urls": found_urls,
         "reason": " | ".join(findings),
