@@ -2,7 +2,7 @@
     <string name="app_name">Scam Shield AI</string>
 
     <!-- Production Backend URL (HTTPS recommended) -->
-    <string name="server_url">https://upi-scam-analyzer.onrender.com</string>
+    <string name="server_url">https://upi-scam-analyzer.onrender.com/</string>
 
     <string name="offline_message">No internet connection. Please check your network.</string>
     <string name="error_generic">Something went wrong. Please try again later.</string>
