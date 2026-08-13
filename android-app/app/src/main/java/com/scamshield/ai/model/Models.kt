@@ -62,3 +62,26 @@ data class GenericResponse(
     val status: String,
     val message: String
 )
+
+data class AdminReportItem(
+    val id: Int,
+    val type: String,
+    @SerializedName("input_data") val inputData: String,
+    val reason: String,
+    val status: String,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("proof_data") val proofData: String? = null
+)
+
+data class BlacklistItem(
+    val id: Int,
+    val data: String,
+    val type: String,
+    val reason: String
+)
+
+data class AddBlacklistRequest(
+    val data: String,
+    val type: String,
+    val reason: String
+)

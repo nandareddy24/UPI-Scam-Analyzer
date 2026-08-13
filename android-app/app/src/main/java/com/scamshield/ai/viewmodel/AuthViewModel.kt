@@ -155,4 +155,119 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private val _adminReports = mutableStateOf<List<com.scamshield.ai.model.AdminReportItem>>(emptyList())
+    val adminReports: State<List<com.scamshield.ai.model.AdminReportItem>> = _adminReports
+
+    private val _adminBlacklist = mutableStateOf<List<com.scamshield.ai.model.BlacklistItem>>(emptyList())
+    val adminBlacklist: State<List<com.scamshield.ai.model.BlacklistItem>> = _adminBlacklist
+
+    fun fetchAdminReports() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = repository.getAdminReports()
+                if (resp.isSuccessful) {
+                    _adminReports.value = resp.body() ?: emptyList()
+                } else {
+                    _error.value = parseError(resp)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun fetchAdminBlacklist() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = repository.getAdminBlacklist()
+                if (resp.isSuccessful) {
+                    _adminBlacklist.value = resp.body() ?: emptyList()
+                } else {
+                    _error.value = parseError(resp)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun approveReport(id: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = repository.approveAdminReport(id)
+                if (resp.isSuccessful) {
+                    fetchAdminReports()
+                    fetchAdminBlacklist()
+                } else {
+                    _error.value = parseError(resp)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun rejectReport(id: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = repository.rejectAdminReport(id)
+                if (resp.isSuccessful) {
+                    fetchAdminReports()
+                } else {
+                    _error.value = parseError(resp)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun addBlacklist(data: String, type: String, reason: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = repository.addAdminBlacklist(data, type, reason)
+                if (resp.isSuccessful) {
+                    fetchAdminBlacklist()
+                } else {
+                    _error.value = parseError(resp)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun deleteBlacklist(id: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val resp = repository.deleteAdminBlacklist(id)
+                if (resp.isSuccessful) {
+                    fetchAdminBlacklist()
+                } else {
+                    _error.value = parseError(resp)
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 }

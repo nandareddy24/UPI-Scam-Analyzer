@@ -53,4 +53,22 @@ interface ApiService {
 
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
+
+    @GET("api/v1/admin/blacklist")
+    suspend fun getAdminBlacklist(): Response<List<BlacklistItem>>
+
+    @POST("api/v1/admin/blacklist")
+    suspend fun addAdminBlacklist(@Body request: AddBlacklistRequest): Response<GenericResponse>
+
+    @DELETE("api/v1/admin/blacklist/{id}")
+    suspend fun deleteAdminBlacklist(@Path("id") id: Int): Response<GenericResponse>
+
+    @GET("api/v1/admin/reports")
+    suspend fun getAdminReports(): Response<List<AdminReportItem>>
+
+    @POST("api/v1/admin/reports/{id}/approve")
+    suspend fun approveAdminReport(@Path("id") id: Int): Response<GenericResponse>
+
+    @POST("api/v1/admin/reports/{id}/reject")
+    suspend fun rejectAdminReport(@Path("id") id: Int): Response<GenericResponse>
 }

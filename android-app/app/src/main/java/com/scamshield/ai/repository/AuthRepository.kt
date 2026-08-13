@@ -22,4 +22,12 @@ class AuthRepository(context: Context) {
         api.resetPassword(mapOf("email" to email, "otp" to otp, "password" to pass))
 
     suspend fun logout() = try { api.logout() } catch (e: Exception) { null }
+
+    suspend fun getAdminBlacklist() = api.getAdminBlacklist()
+    suspend fun addAdminBlacklist(data: String, type: String, reason: String) = 
+        api.addAdminBlacklist(com.scamshield.ai.model.AddBlacklistRequest(data, type, reason))
+    suspend fun deleteAdminBlacklist(id: Int) = api.deleteAdminBlacklist(id)
+    suspend fun getAdminReports() = api.getAdminReports()
+    suspend fun approveAdminReport(id: Int) = api.approveAdminReport(id)
+    suspend fun rejectAdminReport(id: Int) = api.rejectAdminReport(id)
 }

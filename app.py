@@ -32,7 +32,7 @@ import base64
 app = Flask(__name__)
 # Restrict CORS to specific origins if known, or at least common web use cases.
 # Native apps don't use CORS.
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app)
 app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
 
@@ -437,27 +437,326 @@ def parse_qr_payload(payload):
         "raw": payload
     }
 
+# ---------------- PURE BUSINESS LOGIC ANALYSIS HELPERS ----------------
+
+def analyze_upi(upi, user_id=None):
+    if cursor is None:
+        return {"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."}
+
+    clean_upi = upi.lower().strip()
+    score = 0
+    reasons = []
+
+    bump, matches = check_blacklist_or_community(clean_upi, "UPI")
+    score += bump
+    reasons.extend(matches)
+
+    if not re.match(r'^[\w.-]+@[\w.-]+$', clean_upi):
+        score += 5
+        reasons.append("Invalid UPI handle format")
+
+    if any(x in clean_upi for x in ["win", "free", "cash", "offer", "bonus"]):
+        score += 5
+        reasons.append("Contains suspicious scam keywords")
+
+    if upi_model and upi_vectorizer:
+        try:
+            vec = upi_vectorizer.transform([clean_upi])
+            pred = upi_model.predict(vec)[0]
+            if pred == 1:
+                score += 3
+                reasons.append("Flagged by Machine Learning Model")
+        except Exception as e:
+            print("UPI Model Error:", e)
+
+    result = get_result(score)
+    confidence, advice = get_confidence_and_advice(score)
+
+    if cursor is not None:
+        try:
+            cursor.execute(
+                "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, "UPI", clean_upi, score, result)
+            )
+            db.commit()
+        except Exception as e:
+            print("Scan Save Error:", e)
+
+    return {
+        "status": "success",
+        "score": score,
+        "result": result,
+        "reason": ", ".join(reasons) if reasons else "Handle format looks normal with no threat matches.",
+        "confidence": confidence,
+        "advice": advice
+    }
+
+def analyze_phone(phone, user_id=None):
+    if cursor is None:
+        return {"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."}
+
+    raw_phone = phone.strip()
+    clean_phone = re.sub(r'\D', '', raw_phone)
+    score = 0
+    reasons = []
+
+    bump, matches = check_blacklist_or_community(clean_phone, "PHONE")
+    score += bump
+    reasons.extend(matches)
+
+    if len(clean_phone) != 10 and len(clean_phone) != 12:
+        score += 3
+        reasons.append("Non-standard phone number digit length")
+
+    result = get_result(score)
+    confidence, advice = get_confidence_and_advice(score)
+
+    if cursor is not None:
+        try:
+            cursor.execute(
+                "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, "PHONE", raw_phone, score, result)
+            )
+            db.commit()
+        except Exception as e:
+            print("Scan Save Error:", e)
+
+    return {
+        "status": "success",
+        "score": score,
+        "result": result,
+        "reason": ", ".join(reasons) if reasons else "No cybercrime reports or blacklists matched this phone number.",
+        "confidence": confidence,
+        "advice": advice
+    }
+
+def analyze_sms(sms, user_id=None):
+    if cursor is None:
+        return {"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."}
+
+    clean_sms = sms.lower().strip()
+    score = 0
+    reasons = []
+
+    bump, matches = check_blacklist_or_community(clean_sms, "SMS")
+    score += bump
+    reasons.extend(matches)
+
+    if re.search(r'\d{4,}', clean_sms):
+        reasons.append("Contains large numeric sequences (amount/code)")
+
+    if any(x in clean_sms for x in ["rs", "₹", "money", "cash"]):
+        score += 3
+        reasons.append("Money & financial reward terms")
+
+    if any(x in clean_sms for x in ["win", "free", "claim", "urgent"]):
+        score += 3
+        reasons.append("Urgency & scam offer keywords")
+
+    if any(x in clean_sms for x in ["withdraw", "transfer", "credited"]):
+        score += 3
+        reasons.append("Transaction triggers")
+
+    if "http" in clean_sms:
+        score += 4
+        reasons.append("Contains external web link")
+
+    if sms_model and sms_vectorizer:
+        try:
+            vec = sms_vectorizer.transform([clean_sms])
+            pred = sms_model.predict(vec)[0]
+            if pred == 1:
+                score += 3
+                reasons.append("Flagged by TF-IDF Scikit-Learn Model")
+        except Exception as e:
+            print("SMS Model Error:", e)
+
+    result = get_result(score)
+    confidence, advice = get_confidence_and_advice(score)
+
+    if cursor is not None:
+        try:
+            cursor.execute(
+                "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, "SMS", sms, score, result)
+            )
+            db.commit()
+        except Exception as e:
+            print("Scan Save Error:", e)
+
+    return {
+        "status": "success",
+        "score": score,
+        "result": result,
+        "reason": ", ".join(reasons) if reasons else "Message text format appears normal.",
+        "confidence": confidence,
+        "advice": advice
+    }
+
+def analyze_url(url, user_id=None):
+    if cursor is None:
+        return {"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."}
+
+    clean_url = url.lower().strip()
+    score = 0
+    reasons = []
+
+    bump, matches = check_blacklist_or_community(clean_url, "URL")
+    score += bump
+    reasons.extend(matches)
+
+    if any(x in clean_url for x in ["login", "verify", "bank", "secure", "offer", "win"]):
+        score += 3
+        reasons.append("Suspicious credential/banking keywords")
+
+    if "bit.ly" in clean_url or "tinyurl" in clean_url:
+        score += 5
+        reasons.append("Shortened URL service used (masks real destination)")
+
+    if clean_url.count('.') > 3:
+        score += 2
+        reasons.append("Excessive domain sub-levels (multi-dot domain)")
+
+    if re.search(r'\d+\.\d+\.\d+\.\d+', clean_url):
+        score += 5
+        reasons.append("Raw IP address used instead of domain name")
+
+    if len(clean_url) > 75:
+        score += 2
+        reasons.append("Unusually long URL length")
+
+    if not clean_url.startswith("https"):
+        score += 2
+        reasons.append("Unencrypted connection (HTTP without SSL)")
+
+    if "@" in clean_url:
+        score += 4
+        reasons.append("Contains @ symbol (embedded credentials trick)")
+
+    if url_model:
+        try:
+            pred = url_model.predict([clean_url])[0]
+            if pred == 1:
+                score += 3
+                reasons.append("Flagged by Machine Learning Phishing Classifier")
+        except Exception as e:
+            print("URL Model Error:", e)
+
+    vt_res = check_virustotal_api(clean_url)
+    if vt_res.get('flagged'):
+        score += 8
+        reasons.append(vt_res.get('details', 'Flagged by VirusTotal vendors'))
+
+    sb_res = check_safebrowsing_api(clean_url)
+    if sb_res.get('flagged'):
+        score += 8
+        reasons.append(sb_res.get('details', 'Flagged by Google Safe Browsing'))
+
+    result = get_result(score)
+    confidence, advice = get_confidence_and_advice(score)
+
+    if cursor is not None:
+        try:
+            cursor.execute(
+                "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, "URL", url, score, result)
+            )
+            db.commit()
+        except Exception as e:
+            print("Scan Save Error:", e)
+
+    return {
+        "status": "success",
+        "score": score,
+        "result": result,
+        "reason": ", ".join(reasons) if reasons else "Domain format appears safe.",
+        "confidence": confidence,
+        "advice": advice,
+        "virustotal": vt_res,
+        "safebrowsing": sb_res
+    }
+
 # ---------------- ADMIN API ----------------
 
-@app.route('/api/v1/admin/blacklist', methods=['GET'])
+def is_request_admin():
+    email = getattr(request, 'user_email', None)
+    if not email and 'user' in session:
+        email = session['user']
+    return email == ADMIN_EMAIL
+
+@app.route('/api/v1/admin/blacklist', methods=['GET', 'POST'])
+@token_required
 def api_admin_blacklist():
-    if 'user' not in session or session['user'] != ADMIN_EMAIL:
-        return jsonify({"error": "Unauthorized"}), 401
+    if not is_request_admin():
+        return jsonify({"status": "error", "message": "Admin privileges required"}), 403
+
+    if request.method == 'POST':
+        data_json = request.get_json(silent=True) or {}
+        data_val = data_json.get('data', '').strip()
+        type_val = data_json.get('type', '').strip()
+        reason_val = data_json.get('reason', '').strip()
+
+        if not data_val or not type_val:
+            return jsonify({"status": "error", "message": "Missing data or type"}), 400
+
+        cursor.execute(
+            "INSERT INTO blacklist (data, type, reason) VALUES (%s, %s, %s)",
+            (data_val, type_val, reason_val)
+        )
+        db.commit()
+        return jsonify({"status": "success", "message": "Blacklist record created successfully"}), 201
 
     cursor.execute("SELECT id, data, type, reason FROM blacklist ORDER BY id DESC")
     rows = cursor.fetchall()
     items = [{"id": r[0], "data": r[1], "type": r[2], "reason": r[3]} for r in rows]
     return jsonify(items)
 
+@app.route('/api/v1/admin/blacklist/<int:id>', methods=['DELETE'])
+@token_required
+def api_admin_delete_blacklist(id):
+    if not is_request_admin():
+        return jsonify({"status": "error", "message": "Admin privileges required"}), 403
+
+    cursor.execute("DELETE FROM blacklist WHERE id=%s", (id,))
+    db.commit()
+    return jsonify({"status": "success", "message": "Blacklist item deleted successfully"})
+
 @app.route('/api/v1/admin/reports', methods=['GET'])
+@token_required
 def api_admin_reports():
-    if 'user' not in session or session['user'] != ADMIN_EMAIL:
-        return jsonify({"error": "Unauthorized"}), 401
+    if not is_request_admin():
+        return jsonify({"status": "error", "message": "Admin privileges required"}), 403
 
     cursor.execute("SELECT id, type, input_data, reason, status, created_at, proof_data FROM community_reports ORDER BY id DESC")
     rows = cursor.fetchall()
     reports = [{"id": r[0], "type": r[1], "input_data": r[2], "reason": r[3], "status": r[4], "created_at": str(r[5]), "proof_data": r[6]} for r in rows]
     return jsonify(reports)
+
+@app.route('/api/v1/admin/reports/<int:id>/approve', methods=['POST'])
+@token_required
+def api_admin_approve_report(id):
+    if not is_request_admin():
+        return jsonify({"status": "error", "message": "Admin privileges required"}), 403
+
+    cursor.execute("SELECT type, input_data, reason FROM community_reports WHERE id=%s", (id,))
+    rep = cursor.fetchone()
+    if rep:
+        type_, data_val, reason_val = rep[0], rep[1], rep[2]
+        cursor.execute("INSERT INTO blacklist (data, type, reason) VALUES (%s, %s, %s)", (data_val, type_, f"Community Approved: {reason_val}"))
+        cursor.execute("UPDATE community_reports SET status='Approved' WHERE id=%s", (id,))
+        db.commit()
+        return jsonify({"status": "success", "message": "Report approved and added to blacklist"})
+    return jsonify({"status": "error", "message": "Report not found"}), 404
+
+@app.route('/api/v1/admin/reports/<int:id>/reject', methods=['POST'])
+@token_required
+def api_admin_reject_report(id):
+    if not is_request_admin():
+        return jsonify({"status": "error", "message": "Admin privileges required"}), 403
+
+    cursor.execute("UPDATE community_reports SET status='Rejected' WHERE id=%s", (id,))
+    db.commit()
+    return jsonify({"status": "success", "message": "Report rejected"})
 
 # ---------------- HOME ----------------
 @app.route('/')
@@ -1332,7 +1631,6 @@ def scan_qr():
         return jsonify({"status": "error", "message": "Database connection error"}), 500
 
     raw_payload = ""
-    # Support both form-data (web/mobile) and JSON (mobile)
     if request.is_json:
         raw_payload = request.json.get('payload', '').strip()
     else:
@@ -1348,18 +1646,17 @@ def scan_qr():
     if not raw_payload:
         return jsonify({"status": "error", "message": "No QR payload or valid QR code detected in image"}), 400
 
+    uid = getattr(request, 'user_id', None)
     parsed = parse_qr_payload(raw_payload)
     if parsed["type"] == "UPI_QR":
         vpa = parsed.get("vpa", "")
-        with app.test_request_context(json={'upi': vpa}):
-            upi_res = check_upi().get_json()
-            upi_res["qr_payload"] = parsed
-            return jsonify(upi_res)
+        res = analyze_upi(vpa, user_id=uid)
+        res["qr_payload"] = parsed
+        return jsonify(res)
     else:
-        with app.test_request_context(json={'url': raw_payload}):
-            url_res = check_url().get_json()
-            url_res["qr_payload"] = parsed
-            return jsonify(url_res)
+        res = analyze_url(raw_payload, user_id=uid)
+        res["qr_payload"] = parsed
+        return jsonify(res)
 
 # OCR Screenshot Scanner Endpoint
 @app.route('/scan_ocr', methods=['POST'])
@@ -1380,8 +1677,7 @@ def scan_ocr():
     if not file_bytes:
         return jsonify({"status": "error", "message": "Please upload a screenshot image file"}), 400
 
-    # ... rest of logic remains similar but ensures JSON response
-
+    uid = getattr(request, 'user_id', None)
     extracted_text = ""
     qr_payload = decode_qr_from_image(file_bytes)
 
@@ -1399,28 +1695,27 @@ def scan_ocr():
         else:
             found_urls.append(qr_payload)
 
-    if not found_upis and not found_urls:
-        findings.append("OCR screenshot analyzed. No suspicious handles or phishing links detected.")
-
     for upi_item in found_upis:
-        with app.test_request_context(json={'upi': upi_item}):
-            res = check_upi().get_json()
-            findings.append(f"Extracted UPI [{upi_item}]: {res['result']} (Score: {res['score']})")
-            if res['score'] > max_score:
-                max_score = res['score']
-                primary_result = res['result']
+        res = analyze_upi(upi_item, user_id=uid)
+        findings.append(f"Extracted UPI [{upi_item}]: {res['result']} (Score: {res['score']})")
+        if res['score'] > max_score:
+            max_score = res['score']
+            primary_result = res['result']
 
     for url_item in found_urls:
-        with app.test_request_context(json={'url': url_item}):
-            res = check_url().get_json()
-            findings.append(f"Extracted URL [{url_item}]: {res['result']} (Score: {res['score']})")
-            if res['score'] > max_score:
-                max_score = res['score']
-                primary_result = res['result']
+        res = analyze_url(url_item, user_id=uid)
+        findings.append(f"Extracted URL [{url_item}]: {res['result']} (Score: {res['score']})")
+        if res['score'] > max_score:
+            max_score = res['score']
+            primary_result = res['result']
+
+    if not found_upis and not found_urls:
+        findings.append("OCR screenshot analyzed. No suspicious handles or phishing links detected.")
 
     confidence, advice = get_confidence_and_advice(max_score)
 
     return jsonify({
+        "status": "success",
         "score": max_score,
         "result": primary_result,
         "extracted_upis": found_upis,
@@ -1509,153 +1804,41 @@ def download_pdf_report(scan_id):
 # ---------------- PAGES ----------------
 @app.route('/upi')
 def upi():
-
     if 'user' not in session:
         return redirect('/login')
-
-
-
-    return render_template(
-        "upi.html",
-        user=session['user']
-    )
+    return render_template("upi.html", user=session['user'])
 
 @app.route('/url')
 def url_page():
-
     if 'user' not in session:
         return redirect('/login')
-
-
-
-    return render_template(
-        "url.html",
-        user=session['user']
-    )
+    return render_template("url.html", user=session['user'])
 
 @app.route('/sms')
 def sms():
-
     if 'user' not in session:
         return redirect('/login')
-
-
-
-    return render_template(
-        "sms.html",
-        user=session['user']
-    )
+    return render_template("sms.html", user=session['user'])
 
 # ---------------- UPI CHECK ----------------
 @app.route('/check_upi', methods=['POST'])
 @app.route('/api/v1/scan/upi', methods=['POST'])
 @token_required
 def check_upi():
-
-    if cursor is None:
-        return jsonify({
-            "score": 0,
-            "result": "Error",
-            "reason": "Database connection failed",
-            "confidence": 0,
-            "advice": "System offline."
-        })
-
-    upi = request.json.get('upi', '').lower().strip()
-
-    score = 0
-    reasons = []
-
-    # Check Blacklist / Community Reports
-    bump, matches = check_blacklist_or_community(upi, "UPI")
-    score += bump
-    reasons.extend(matches)
-
-    # UPI Format Check
-    if not re.match(r'^[\w.-]+@[\w.-]+$', upi):
-        score += 5
-        reasons.append("Invalid UPI handle format")
-
-    # Scam Keywords
-    if any(x in upi for x in ["win", "free", "cash", "offer", "bonus"]):
-        score += 5
-        reasons.append("Contains suspicious scam keywords")
-
-    # ML Model Check
-    if upi_model and upi_vectorizer:
-        try:
-            vec = upi_vectorizer.transform([upi])
-            pred = upi_model.predict(vec)[0]
-            if pred == 1:
-                score += 3
-                reasons.append("Flagged by Machine Learning Model")
-        except Exception as e:
-            print("UPI Model Error:", e)
-
-    result = get_result(score)
-    confidence, advice = get_confidence_and_advice(score)
-
-    # Save Scan History
-    try:
-        uid = get_auth_user_id()
-        cursor.execute(
-            "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
-            (uid, "UPI", upi, score, result)
-        )
-        db.commit()
-    except Exception as e:
-        print("Scan Save Error:", e)
-
-    return jsonify({
-        "score": score,
-        "result": result,
-        "reason": ", ".join(reasons) if reasons else "Handle format looks normal with no threat matches.",
-        "confidence": confidence,
-        "advice": advice
-    })
+    data = request.get_json(silent=True) or {}
+    upi_val = data.get('upi', '').strip() if request.is_json else request.form.get('upi', '').strip()
+    uid = getattr(request, 'user_id', None)
+    return jsonify(analyze_upi(upi_val, user_id=uid))
 
 # ---------------- PHONE CHECK ----------------
 @app.route('/check_phone', methods=['POST'])
 @app.route('/api/v1/scan/phone', methods=['POST'])
 @token_required
 def check_phone():
-    if cursor is None:
-        return jsonify({"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."})
-
-    phone = request.json.get('phone', '').strip()
-    clean_phone = re.sub(r'\D', '', phone)
-    
-    score = 0
-    reasons = []
-
-    bump, matches = check_blacklist_or_community(clean_phone, "PHONE")
-    score += bump
-    reasons.extend(matches)
-
-    if len(clean_phone) != 10 and len(clean_phone) != 12:
-        score += 3
-        reasons.append("Non-standard phone number digit length")
-
-    result = get_result(score)
-    confidence, advice = get_confidence_and_advice(score)
-
-    try:
-        uid = get_auth_user_id()
-        cursor.execute(
-            "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
-            (uid, "PHONE", phone, score, result)
-        )
-        db.commit()
-    except Exception as e:
-        print("Scan Save Error:", e)
-
-    return jsonify({
-        "score": score,
-        "result": result,
-        "reason": ", ".join(reasons) if reasons else "No cybercrime reports or blacklists matched this phone number.",
-        "confidence": confidence,
-        "advice": advice
-    })
+    data = request.get_json(silent=True) or {}
+    phone_val = data.get('phone', '').strip() if request.is_json else request.form.get('phone', '').strip()
+    uid = getattr(request, 'user_id', None)
+    return jsonify(analyze_phone(phone_val, user_id=uid))
 
 # ---------------- BROWSER EXTENSION ENDPOINTS ----------------
 @app.route('/api/v1/extension/check_url', methods=['POST', 'OPTIONS'])
@@ -1667,27 +1850,15 @@ def extension_check_url():
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response
 
-    data = request.json or {}
-    url = data.get('url', '').strip()
-    if not url:
+    data = request.get_json(silent=True) or {}
+    url_val = data.get('url', '').strip()
+    if not url_val:
         res = jsonify({"status": "error", "message": "No URL provided"})
         res.headers.add("Access-Control-Allow-Origin", "*")
         return res, 400
 
-    with app.test_request_context(json={'url': url}):
-        check_res = check_url().get_json()
-
-    # Log threat alerts automatically into scan history
-    if check_res.get('score', 0) >= 3 and cursor is not None:
-        try:
-            uid = get_auth_user_id()
-            cursor.execute(
-                "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
-                (uid, "URL", f"[Extension Guard] {url}", check_res.get('score', 0), check_res.get('result', 'Warning'))
-            )
-            db.commit()
-        except Exception as e:
-            print("Extension Scan Log Error:", e)
+    uid = get_auth_user_id()
+    check_res = analyze_url(url_val, user_id=uid)
 
     response = jsonify(check_res)
     response.headers.add("Access-Control-Allow-Origin", "*")
@@ -1697,9 +1868,6 @@ def extension_check_url():
 def extension_page():
     if 'user' not in session:
         return redirect('/login')
-
-
-
     return render_template("extension.html", user=session['user'])
 
 @app.route('/download_extension_zip')
@@ -1737,180 +1905,25 @@ def mobile_app():
     user = session.get('user', 'Guest User')
     return render_template("mobile_app.html", user=user)
 
-
-
 # ---------------- URL CHECK ----------------
 @app.route('/check_url', methods=['POST'])
 @app.route('/api/v1/scan/url', methods=['POST'])
 @token_required
 def check_url():
-
-    if cursor is None:
-        return jsonify({
-            "score": 0,
-            "result": "Error",
-            "reason": "Database connection failed",
-            "confidence": 0,
-            "advice": "System offline."
-        })
-
-    url = request.json.get('url', '').lower().strip()
-
-    score = 0
-    reasons = []
-
-    # Check Blacklist / Community Reports
-    bump, matches = check_blacklist_or_community(url, "URL")
-    score += bump
-    reasons.extend(matches)
-
-    if any(x in url for x in ["login", "verify", "bank", "secure", "offer", "win"]):
-        score += 3
-        reasons.append("Suspicious credential/banking keywords")
-
-    if "bit.ly" in url or "tinyurl" in url:
-        score += 5
-        reasons.append("Shortened URL service used (masks real destination)")
-
-    if url.count('.') > 3:
-        score += 2
-        reasons.append("Excessive domain sub-levels (multi-dot domain)")
-
-    if re.search(r'\d+\.\d+\.\d+\.\d+', url):
-        score += 5
-        reasons.append("Raw IP address used instead of domain name")
-
-    if len(url) > 75:
-        score += 2
-        reasons.append("Unusually long URL length")
-
-    if not url.startswith("https"):
-        score += 2
-        reasons.append("Unencrypted connection (HTTP without SSL)")
-
-    if "@" in url:
-        score += 4
-        reasons.append("Contains @ symbol (embedded credentials trick)")
-
-    if url_model:
-        try:
-            pred = url_model.predict([url])[0]
-            if pred == 1:
-                score += 3
-                reasons.append("Flagged by Machine Learning Phishing Classifier")
-        except Exception as e:
-            print("URL Model Error:", e)
-
-    # VirusTotal & Safe Browsing API Real-Time Inspection
-    vt_res = check_virustotal_api(url)
-    if vt_res.get('flagged'):
-        score += 8
-        reasons.append(vt_res.get('details', 'Flagged by VirusTotal vendors'))
-
-    sb_res = check_safebrowsing_api(url)
-    if sb_res.get('flagged'):
-        score += 8
-        reasons.append(sb_res.get('details', 'Flagged by Google Safe Browsing'))
-
-    result = get_result(score)
-    confidence, advice = get_confidence_and_advice(score)
-
-    # Save Scan History
-    try:
-        uid = get_auth_user_id()
-        cursor.execute(
-            "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
-            (uid, "URL", url, score, result)
-        )
-        db.commit()
-    except Exception as e:
-        print("Scan Save Error:", e)
-
-    return jsonify({
-        "score": score,
-        "result": result,
-        "reason": ", ".join(reasons) if reasons else "Domain format appears safe.",
-        "confidence": confidence,
-        "advice": advice,
-        "virustotal": vt_res,
-        "safebrowsing": sb_res
-    })
+    data = request.get_json(silent=True) or {}
+    url_val = data.get('url', '').strip() if request.is_json else request.form.get('url', '').strip()
+    uid = getattr(request, 'user_id', None)
+    return jsonify(analyze_url(url_val, user_id=uid))
 
 # ---------------- SMS CHECK ----------------
 @app.route('/check_sms', methods=['POST'])
 @app.route('/api/v1/scan/sms', methods=['POST'])
 @token_required
 def check_sms():
-
-    if cursor is None:
-        return jsonify({
-            "score": 0,
-            "result": "Error",
-            "reason": "Database connection failed",
-            "confidence": 0,
-            "advice": "System offline."
-        })
-
-    sms = request.json.get('sms', '').lower().strip()
-
-    score = 0
-    reasons = []
-
-    # Check Blacklist / Community Reports
-    bump, matches = check_blacklist_or_community(sms, "SMS")
-    score += bump
-    reasons.extend(matches)
-
-    if re.search(r'\d{4,}', sms):
-        reasons.append("Contains large numeric sequences (amount/code)")
-
-    if any(x in sms for x in ["rs", "₹", "money", "cash"]):
-        score += 3
-        reasons.append("Money & financial reward terms")
-
-    if any(x in sms for x in ["win", "free", "claim", "urgent"]):
-        score += 3
-        reasons.append("Urgency & scam offer keywords")
-
-    if any(x in sms for x in ["withdraw", "transfer", "credited"]):
-        score += 3
-        reasons.append("Transaction triggers")
-
-    if "http" in sms:
-        score += 4
-        reasons.append("Contains external web link")
-
-    if sms_model and sms_vectorizer:
-        try:
-            vec = sms_vectorizer.transform([sms])
-            pred = sms_model.predict(vec)[0]
-            if pred == 1:
-                score += 3
-                reasons.append("Flagged by TF-IDF Scikit-Learn Model")
-        except Exception as e:
-            print("SMS Model Error:", e)
-
-    result = get_result(score)
-    confidence, advice = get_confidence_and_advice(score)
-
-    # Save Scan History
-    try:
-        uid = get_auth_user_id()
-        cursor.execute(
-            "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
-            (uid, "SMS", sms, score, result)
-        )
-        db.commit()
-    except Exception as e:
-        print("Scan Save Error:", e)
-
-    return jsonify({
-        "score": score,
-        "result": result,
-        "reason": ", ".join(reasons) if reasons else "Message text format appears normal.",
-        "confidence": confidence,
-        "advice": advice
-    })
+    data = request.get_json(silent=True) or {}
+    sms_val = data.get('sms', '').strip() if request.is_json else request.form.get('sms', '').strip()
+    uid = getattr(request, 'user_id', None)
+    return jsonify(analyze_sms(sms_val, user_id=uid))
 
 # ---------------- ADVANCED ENDPOINTS ----------------
 
@@ -1919,19 +1932,16 @@ def check_sms():
 def report_page():
     if 'user' not in session:
         return redirect('/login')
-
-
-
     return render_template("report.html", user=session['user'])
 
 @app.route('/report_scam', methods=['POST'])
 @app.route('/api/v1/reports', methods=['POST'])
 @token_required
 def report_scam():
-    if 'user' not in session and not get_auth_user_id():
-        return jsonify({"status": "error", "message": "Login required to report scams"}), 401
+    user_id = getattr(request, 'user_id', None)
+    if not user_id:
+        return jsonify({"status": "error", "message": "Authentication required"}), 401
     
-    # Support both JSON and Form Data
     if request.is_json:
         req = request.get_json(silent=True) or {}
         data = req.get('data', '').strip()
@@ -1951,7 +1961,6 @@ def report_scam():
         return jsonify({"status": "error", "message": "Missing required fields (data, type)"}), 400
 
     try:
-        user_id = get_auth_user_id() or 1
         cursor.execute(
             "INSERT INTO community_reports (user_id, type, input_data, reason, proof_data) VALUES (%s, %s, %s, %s, %s)",
             (user_id, type_, data, reason, proof)
@@ -1961,10 +1970,9 @@ def report_scam():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-
 # 3. Developer REST API Endpoint
 @app.route('/api/v1/analyze', methods=['POST'])
+@token_required
 def api_v1_analyze():
     req = request.get_json(silent=True) or {}
     input_type = req.get('type', '').upper().strip()
@@ -1975,16 +1983,13 @@ def api_v1_analyze():
             "error": "Bad Request. Provide 'type' (UPI|URL|SMS) and 'data' string in JSON body."
         }), 400
 
+    uid = getattr(request, 'user_id', None)
     if input_type == 'UPI':
-        # Delegate to check_upi logic
-        with app.test_request_context(json={'upi': input_data}):
-            return check_upi()
+        return jsonify(analyze_upi(input_data, user_id=uid))
     elif input_type == 'URL':
-        with app.test_request_context(json={'url': input_data}):
-            return check_url()
+        return jsonify(analyze_url(input_data, user_id=uid))
     elif input_type == 'SMS':
-        with app.test_request_context(json={'sms': input_data}):
-            return check_sms()
+        return jsonify(analyze_sms(input_data, user_id=uid))
     else:
         return jsonify({"error": "Unsupported type. Valid types are: UPI, URL, SMS."}), 400
 
