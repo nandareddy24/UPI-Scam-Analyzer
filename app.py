@@ -765,11 +765,21 @@ def home():
 
 @app.route('/api/v1/health', methods=['GET'])
 def api_health():
+    user_count = 0
+    if cursor:
+        try:
+            cursor.execute("SELECT COUNT(*) FROM users")
+            user_count = cursor.fetchone()[0]
+        except:
+            pass
+
     return jsonify({
         "status": "ok",
         "service": "UPI Scam Analyzer API",
-        "database": db.db_type if db.conn else "disconnected"
-    })
+        "database": db.db_type if db.conn else "disconnected",
+        "users_in_db": user_count,
+        "environment": "production" if os.getenv("RENDER") else "development"
+    }), 200
 
 @app.route('/api/v1/debug/otps', methods=['GET'])
 def api_debug_otps():
