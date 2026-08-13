@@ -5,6 +5,7 @@ Flask-Login
 
 bcrypt
 gunicorn
+PyJWT>=2.8.0
 
 psycopg2-binary
 
@@ -25,3 +26,5 @@ opencv-python-headless
 Pillow
 Jinja2
 Werkzeug
+openpyxl
+reportlab
