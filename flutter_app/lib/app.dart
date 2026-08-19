@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/theme/app_theme.dart';
 import 'providers/app_providers.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/otp_screen.dart';
 import 'screens/forgot_password_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/main_navigation_screen.dart';
 import 'screens/upi_scanner_screen.dart';
 import 'screens/phone_scanner_screen.dart';
 import 'screens/sms_scanner_screen.dart';
 import 'screens/url_scanner_screen.dart';
 import 'screens/ocr_scanner_screen.dart';
 import 'screens/qr_scanner_screen.dart';
-import 'screens/history_screen.dart';
-import 'screens/report_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/admin_screen.dart';
+import 'screens/apk_scanner_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -69,7 +67,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(),
+        builder: (context, state) => const MainNavigationScreen(initialIndex: 0),
+      ),
+      GoRoute(
+        path: '/scan-hub',
+        builder: (context, state) => const MainNavigationScreen(initialIndex: 1),
       ),
       GoRoute(
         path: '/scan-upi',
@@ -96,20 +98,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const QrScannerScreen(),
       ),
       GoRoute(
+        path: '/scan-apk',
+        builder: (context, state) => const ApkScannerScreen(),
+      ),
+      GoRoute(
         path: '/history',
-        builder: (context, state) => const HistoryScreen(),
+        builder: (context, state) => const MainNavigationScreen(initialIndex: 2),
       ),
       GoRoute(
         path: '/report',
-        builder: (context, state) => const ReportScreen(),
+        builder: (context, state) => const MainNavigationScreen(initialIndex: 3),
       ),
       GoRoute(
-        path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
-      ),
-      GoRoute(
-        path: '/admin',
-        builder: (context, state) => const AdminScreen(),
+        path: '/settings',
+        builder: (context, state) => const MainNavigationScreen(initialIndex: 4),
       ),
     ],
   );
@@ -123,23 +125,11 @@ class ScamShieldApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'ScamShield AI',
+      title: 'UPI Scam Analyzer',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E88E5),
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E88E5),
-          brightness: Brightness.dark,
-        ),
-      ),
-      themeMode: ThemeMode.system,
+      theme: AppTheme.darkTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
       routerConfig: router,
     );
   }

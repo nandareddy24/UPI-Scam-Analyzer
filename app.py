@@ -6,7 +6,7 @@ warnings.filterwarnings("ignore")
 from functools import wraps
 
 
-from flask import Flask, render_template, request, redirect, jsonify, session
+from flask import Flask, render_template, request, redirect, jsonify, session, send_file
 from flask_cors import CORS
 import psycopg2
 import bcrypt
@@ -751,6 +751,96 @@ def analyze_url(url, user_id=None):
         "advice": advice,
         "virustotal": vt_res,
         "safebrowsing": sb_res
+    }
+
+import hashlib
+import zipfile
+
+def analyze_apk(file_bytes, filename, user_id=None):
+    if cursor is None:
+        return {"score": 0, "result": "Error", "reason": "Database connection failed", "confidence": 0, "advice": "System offline."}
+
+    score = 0
+    reasons = []
+    sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+    file_size_mb = round(len(file_bytes) / (1024 * 1024), 2)
+    clean_name = filename.lower().strip()
+
+    bump, matches = check_blacklist_or_community(clean_name, "APK")
+    score += bump
+    reasons.extend(matches)
+
+    bump_hash, matches_hash = check_blacklist_or_community(sha256_hash, "APK_HASH")
+    score += bump_hash
+    reasons.extend(matches_hash)
+
+    scam_keywords = ["sbi", "yono", "paytm", "gpay", "phonepe", "reward", "kbc", "electricity", "loan", "gift", "bonus", "free", "mod", "hack", "income_tax", "refund", "update", "support"]
+    matched_keywords = [kw for kw in scam_keywords if kw in clean_name]
+    if matched_keywords:
+        score += 5
+        reasons.append(f"Filename contains fake banking/scam keywords: {', '.join(matched_keywords)}")
+
+    permissions_found = []
+    try:
+        with zipfile.ZipFile(BytesIO(file_bytes)) as z:
+            namelist = z.namelist()
+            if "AndroidManifest.xml" not in namelist:
+                score += 3
+                reasons.append("Invalid or obfuscated APK structure (AndroidManifest.xml missing)")
+            
+            for item in namelist:
+                if item.endswith(".xml") or item.endswith(".dex"):
+                    try:
+                        content = z.read(item).decode('latin1', errors='ignore')
+                        if "RECEIVE_SMS" in content or "READ_SMS" in content:
+                            if "SMS Interception permission requested" not in permissions_found:
+                                permissions_found.append("SMS Interception permission requested")
+                                score += 3
+                        if "BIND_ACCESSIBILITY_SERVICE" in content:
+                            if "Accessibility Service Hijack permission requested" not in permissions_found:
+                                permissions_found.append("Accessibility Service Hijack permission requested")
+                                score += 4
+                        if "SYSTEM_ALERT_WINDOW" in content:
+                            if "Overlay Window (Overlay Attack) permission requested" not in permissions_found:
+                                permissions_found.append("Overlay Window (Overlay Attack) permission requested")
+                                score += 2
+                    except Exception:
+                        pass
+    except Exception as e:
+        score += 2
+        reasons.append("Non-standard APK binary structure")
+
+    if permissions_found:
+        reasons.extend(permissions_found)
+
+    result = get_result(score)
+    confidence, advice = get_confidence_and_advice(score)
+    if result == "Dangerous":
+        advice = "CRITICAL MALWARE RISK: Do NOT install or open this APK file. It may intercept SMS OTPs or hijack your device."
+
+    if cursor is not None:
+        try:
+            cursor.execute(
+                "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, "APK", filename, score, result)
+            )
+            db.commit()
+        except Exception as e:
+            print("APK Scan Save Error:", e)
+
+    return {
+        "status": "success",
+        "score": score,
+        "result": result,
+        "reason": " | ".join(reasons) if reasons else "APK file structure and permissions appear normal.",
+        "confidence": confidence,
+        "advice": advice,
+        "apk_details": {
+            "filename": filename,
+            "size_mb": file_size_mb,
+            "sha256": sha256_hash,
+            "permissions": permissions_found
+        }
     }
 
 # ---------------- ADMIN API ----------------
@@ -1861,6 +1951,51 @@ def scan_ocr():
         "advice": advice
     })
 
+# APK Malware & Fraud Scanner Endpoint
+@app.route('/scan_apk', methods=['POST'])
+@app.route('/api/v1/scan/apk', methods=['POST'])
+@token_required
+def scan_apk():
+    if cursor is None:
+        return jsonify({"status": "error", "message": "Database connection error"}), 500
+
+    file_bytes = None
+    filename = "unknown.apk"
+
+    if 'apk' in request.files:
+        file = request.files['apk']
+        filename = file.filename or "uploaded.apk"
+        file_bytes = file.read()
+    elif 'file' in request.files:
+        file = request.files['file']
+        filename = file.filename or "uploaded.apk"
+        file_bytes = file.read()
+
+    if not file_bytes:
+        return jsonify({"status": "error", "message": "Please upload an APK file"}), 400
+
+    uid = getattr(request, 'user_id', None)
+    return jsonify(analyze_apk(file_bytes, filename, user_id=uid))
+
+# APK Direct Download Endpoint
+@app.route('/download_apk')
+@app.route('/api/v1/download/apk')
+def download_apk():
+    apk_path = os.path.join(app.root_path, 'static', 'app-release.apk')
+    if not os.path.exists(apk_path):
+        apk_path = os.path.join(app.root_path, 'flutter_app', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+    if not os.path.exists(apk_path):
+        apk_path = os.path.join(app.root_path, 'ScamShieldAI.apk')
+
+    if os.path.exists(apk_path):
+        return send_file(
+            apk_path,
+            as_attachment=True,
+            download_name='UPI_Scam_Analyzer.apk',
+            mimetype='application/vnd.android.package-archive'
+        )
+    return jsonify({"status": "error", "message": "APK file not found. Please compile release build first."}), 404
+
 # PDF Security Evidence Report Endpoint
 @app.route('/download_pdf_report/<int:scan_id>')
 def download_pdf_report(scan_id):
@@ -2137,8 +2272,10 @@ def api_v1_analyze():
         return jsonify(analyze_url(input_data, user_id=uid))
     elif input_type == 'SMS':
         return jsonify(analyze_sms(input_data, user_id=uid))
+    elif input_type == 'APK':
+        return jsonify(analyze_apk(input_data.encode('utf-8'), input_data, user_id=uid))
     else:
-        return jsonify({"error": "Unsupported type. Valid types are: UPI, URL, SMS."}), 400
+        return jsonify({"error": "Unsupported type. Valid types are: UPI, URL, SMS, APK."}), 400
 
 
 # ---------------- MOBILE API ----------------

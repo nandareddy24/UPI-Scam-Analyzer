@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/config/api_config.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/secure_storage.dart';
+import '../models/scan_result.dart';
 import '../models/user.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/scan_repository.dart';
@@ -40,7 +42,7 @@ final adminRepositoryProvider = Provider<AdminRepository>((ref) {
   return AdminRepository(apiClient: ref.watch(apiClientProvider));
 });
 
-// State for current user
+// Auth State Notifier
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository authRepo;
 
@@ -70,4 +72,65 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserModel?>>((ref) {
   return AuthNotifier(ref.watch(authRepositoryProvider));
+});
+
+// History State Notifier
+class HistoryNotifier extends StateNotifier<AsyncValue<List<ScanResult>>> {
+  final HistoryRepository historyRepo;
+
+  HistoryNotifier(this.historyRepo) : super(const AsyncValue.loading()) {
+    loadHistory();
+  }
+
+  Future<void> loadHistory() async {
+    state = const AsyncValue.loading();
+    try {
+      final items = await historyRepo.getHistory();
+      state = AsyncValue.data(items);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> deleteScan(String id) async {
+    await historyRepo.deleteScan(id);
+    await loadHistory();
+  }
+
+  Future<void> clearAll() async {
+    await historyRepo.clearAll();
+    await loadHistory();
+  }
+}
+
+final historyStateProvider = StateNotifierProvider<HistoryNotifier, AsyncValue<List<ScanResult>>>((ref) {
+  return HistoryNotifier(ref.watch(historyRepositoryProvider));
+});
+
+// Config & Server URL Provider
+class BaseUrlNotifier extends StateNotifier<String> {
+  final ApiClient apiClient;
+
+  BaseUrlNotifier(this.apiClient) : super(ApiConfig.baseUrl);
+
+  Future<void> updateUrl(String newUrl) async {
+    await ApiConfig.setBaseUrl(newUrl);
+    apiClient.updateBaseUrl();
+    state = ApiConfig.baseUrl;
+  }
+}
+
+final baseUrlProvider = StateNotifierProvider<BaseUrlNotifier, String>((ref) {
+  return BaseUrlNotifier(ref.watch(apiClientProvider));
+});
+
+// Health check provider
+final healthStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  try {
+    final res = await client.dio.get('/api/v1/health');
+    return res.data is Map<String, dynamic> ? res.data : {'status': 'ok'};
+  } catch (e) {
+    return {'status': 'offline', 'error': ApiClient.getErrorMessage(e)};
+  }
 });

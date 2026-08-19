@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/theme/app_theme.dart';
 import '../models/scan_result.dart';
 import '../providers/app_providers.dart';
+import '../widgets/cyber_card.dart';
+import '../widgets/risk_result_card.dart';
 
 class UpiScannerScreen extends ConsumerStatefulWidget {
   const UpiScannerScreen({super.key});
@@ -13,7 +16,7 @@ class UpiScannerScreen extends ConsumerStatefulWidget {
 class _UpiScannerScreenState extends ConsumerState<UpiScannerScreen> {
   final _upiController = TextEditingController();
   bool _isLoading = false;
-  ScanResultModel? _result;
+  ScanResult? _result;
   String? _errorMessage;
 
   @override
@@ -22,9 +25,21 @@ class _UpiScannerScreenState extends ConsumerState<UpiScannerScreen> {
     super.dispose();
   }
 
+  bool _validateUpiFormat(String upi) {
+    return RegExp(r'^[\w.-]+@[\w.-]+$').hasMatch(upi);
+  }
+
   Future<void> _analyzeUpi() async {
     final upi = _upiController.text.trim();
-    if (upi.isEmpty) return;
+    if (upi.isEmpty) {
+      setState(() => _errorMessage = 'Please enter a UPI ID or VPA address.');
+      return;
+    }
+
+    if (!_validateUpiFormat(upi)) {
+      setState(() => _errorMessage = 'Invalid format! Valid UPI format: username@bank (e.g. merchant@upi)');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -38,6 +53,7 @@ class _UpiScannerScreenState extends ConsumerState<UpiScannerScreen> {
       setState(() {
         _result = res;
       });
+      ref.read(historyStateProvider.notifier).loadHistory();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -51,128 +67,101 @@ class _UpiScannerScreenState extends ConsumerState<UpiScannerScreen> {
     }
   }
 
-  Color _getResultColor(String result) {
-    switch (result.toLowerCase()) {
-      case 'safe':
-        return Colors.green;
-      case 'warning':
-        return Colors.orange;
-      case 'dangerous':
-      case 'scam':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('UPI ID Checker'),
+        title: const Text('UPI Scam Detector'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Analyze UPI VPA',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Enter UPI ID (e.g. merchant@paytm or receiver@ybl)',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _upiController,
-                      decoration: InputDecoration(
-                        labelText: 'UPI ID / VPA',
-                        hintText: 'example@upi',
-                        prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            CyberCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.account_balance_wallet_rounded, color: AppTheme.cyberCyan, size: 22),
+                      SizedBox(width: 10),
+                      Text(
+                        'Analyze UPI VPA Address',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Enter recipient UPI ID before paying (e.g. test@upi, merchant@paytm)',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _upiController,
+                    decoration: InputDecoration(
+                      labelText: 'UPI VPA Address',
+                      hintText: 'example@upi',
+                      prefixIcon: const Icon(Icons.alternate_email_rounded, color: AppTheme.cyberCyan),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: AppTheme.textMuted),
+                        onPressed: () => _upiController.clear(),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _isLoading ? null : _analyzeUpi,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text('Analyze UPI ID', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
+                    onSubmitted: (_) => _analyzeUpi(),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _analyzeUpi,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.security_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('VERIFY UPI THREAT SCORE'),
+                            ],
+                          ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 16),
+
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
+                  color: AppTheme.threatRedBg,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.threatRed),
                 ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
-                ),
-              ),
-            if (_result != null) ...[
-              Card(
-                elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Risk Assessment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Chip(
-                            label: Text(
-                              _result!.result.toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                            backgroundColor: _getResultColor(_result!.result),
-                          ),
-                        ],
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppTheme.threatRed),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                       ),
-                      const SizedBox(height: 14),
-                      Text('Risk Score: ${_result!.score} / 10', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 10),
-                      Text('UPI ID: ${_result!.inputData ?? _upiController.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                      const Divider(height: 24),
-                      const Text('Analysis Details:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Text(_result!.reason.isNotEmpty ? _result!.reason : 'No prior scam reports detected for this VPA.'),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+
+            if (_result != null) RiskResultCard(result: _result!),
           ],
         ),
       ),

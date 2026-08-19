@@ -3,10 +3,14 @@ import '../config/api_config.dart';
 import '../storage/secure_storage.dart';
 
 class ApiClient {
-  late final Dio dio;
+  late Dio dio;
   final SecureStorageService storageService;
 
   ApiClient({required this.storageService}) {
+    _initDio();
+  }
+
+  void _initDio() {
     dio = Dio(
       BaseOptions(
         baseUrl: ApiConfig.baseUrl,
@@ -22,6 +26,7 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          options.baseUrl = ApiConfig.baseUrl;
           final token = await storageService.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -38,21 +43,28 @@ class ApiClient {
     );
   }
 
+  void updateBaseUrl() {
+    dio.options.baseUrl = ApiConfig.baseUrl;
+  }
+
   static String getErrorMessage(dynamic error) {
     if (error is DioException) {
       if (error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.sendTimeout ||
           error.type == DioExceptionType.receiveTimeout ||
           error.type == DioExceptionType.connectionError) {
-        return 'No internet connection or server timeout. Please check your network.';
+        return 'Online AI analysis unavailable. Please check your connection or backend server URL.';
       }
       if (error.response?.data != null && error.response?.data is Map) {
-        final message = error.response?.data['message'];
+        final message = error.response?.data['message'] ?? error.response?.data['error'];
         if (message != null && message.toString().isNotEmpty) {
           return message.toString();
         }
       }
-      return 'Server error (${error.response?.statusCode ?? "Unknown"}). Please try again later.';
+      if (error.response?.statusCode != null) {
+        return 'Server error (${error.response!.statusCode}). Please try again later.';
+      }
+      return 'Network request failed. Please check backend configuration.';
     }
     return error.toString();
   }

@@ -11,7 +11,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('ScamShield AI'), findsOneWidget);
-    expect(find.text('Login'), findsWidgets);
+    expect(find.text('UPI Scam Analyzer'), findsOneWidget);
   });
 }

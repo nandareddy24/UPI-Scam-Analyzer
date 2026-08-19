@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/theme/app_theme.dart';
 import '../models/scan_result.dart';
 import '../providers/app_providers.dart';
+import '../widgets/cyber_card.dart';
+import '../widgets/risk_result_card.dart';
 
 class PhoneScannerScreen extends ConsumerStatefulWidget {
   const PhoneScannerScreen({super.key});
@@ -13,7 +16,7 @@ class PhoneScannerScreen extends ConsumerStatefulWidget {
 class _PhoneScannerScreenState extends ConsumerState<PhoneScannerScreen> {
   final _phoneController = TextEditingController();
   bool _isLoading = false;
-  ScanResultModel? _result;
+  ScanResult? _result;
   String? _errorMessage;
 
   @override
@@ -24,7 +27,10 @@ class _PhoneScannerScreenState extends ConsumerState<PhoneScannerScreen> {
 
   Future<void> _analyzePhone() async {
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty) return;
+    if (phone.isEmpty) {
+      setState(() => _errorMessage = 'Please enter a phone number to scan.');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -38,6 +44,7 @@ class _PhoneScannerScreenState extends ConsumerState<PhoneScannerScreen> {
       setState(() {
         _result = res;
       });
+      ref.read(historyStateProvider.notifier).loadHistory();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -51,24 +58,8 @@ class _PhoneScannerScreenState extends ConsumerState<PhoneScannerScreen> {
     }
   }
 
-  Color _getResultColor(String result) {
-    switch (result.toLowerCase()) {
-      case 'safe':
-        return Colors.green;
-      case 'warning':
-        return Colors.orange;
-      case 'dangerous':
-      case 'scam':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Phone Number Checker'),
@@ -78,102 +69,88 @@ class _PhoneScannerScreenState extends ConsumerState<PhoneScannerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Check Phone Number',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Detect reported spam callers and fraud phone numbers',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        hintText: '+91 9876543210',
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            CyberCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.phone_in_talk_rounded, color: AppTheme.cyberCyan, size: 22),
+                      SizedBox(width: 10),
+                      Text(
+                        'Check Phone Number Threat Score',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Detects known cybercrime helpline records, spam reports & format anomalies.',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      hintText: '+91 9876543210',
+                      prefixIcon: const Icon(Icons.phone_rounded, color: AppTheme.cyberCyan),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: AppTheme.textMuted),
+                        onPressed: () => _phoneController.clear(),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _isLoading ? null : _analyzePhone,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text('Analyze Phone Number', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
+                    onSubmitted: (_) => _analyzePhone(),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _analyzePhone,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('CHECK PHONE NUMBER'),
+                            ],
+                          ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 16),
+
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
+                  color: AppTheme.threatRedBg,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.threatRed),
                 ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
-                ),
-              ),
-            if (_result != null) ...[
-              Card(
-                elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Caller Risk Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Chip(
-                            label: Text(
-                              _result!.result.toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                            backgroundColor: _getResultColor(_result!.result),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Text('Risk Score: ${_result!.score} / 10', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 10),
-                      Text('Phone Number: ${_result!.inputData ?? _phoneController.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                      const Divider(height: 24),
-                      const Text('Threat Analysis:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Text(_result!.reason.isNotEmpty ? _result!.reason : 'No reported scam records for this phone number.'),
-                    ],
-                  ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppTheme.threatRed),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(_errorMessage!, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+                    ),
+                  ],
                 ),
               ),
-            ],
+
+            if (_result != null) RiskResultCard(result: _result!),
           ],
         ),
       ),

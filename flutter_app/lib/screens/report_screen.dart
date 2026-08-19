@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/theme/app_theme.dart';
 import '../providers/app_providers.dart';
+import '../widgets/cyber_card.dart';
 
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
@@ -40,7 +42,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
     try {
       final repo = ref.read(reportRepositoryProvider);
-      await repo.submitReport(
+      final msg = await repo.submitReport(
         type: _selectedType,
         inputData: _dataController.text.trim(),
         reason: _reasonController.text.trim(),
@@ -48,7 +50,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       );
 
       setState(() {
-        _successMessage = 'Scam report submitted successfully! Our community security team will review it.';
+        _successMessage = msg;
         _dataController.clear();
         _reasonController.clear();
         _proofController.clear();
@@ -68,11 +70,9 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Report Fraud / Scam'),
+        title: const Text('Community Fraud Reporting'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -81,130 +81,136 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.report_problem_outlined, color: theme.colorScheme.error, size: 28),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Submit Fraud Report',
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              CyberCard(
+                borderColor: AppTheme.threatRed.withOpacity(0.4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.report_problem_rounded, color: AppTheme.threatRed, size: 24),
+                        SizedBox(width: 10),
+                        Text(
+                          'Submit Community Fraud Report',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Help protect millions of users by reporting fraudulent UPI IDs, phone numbers, or links.',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 20),
-                      if (_errorMessage != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(_errorMessage!, style: TextStyle(color: theme.colorScheme.onErrorContainer)),
                         ),
-                        const SizedBox(height: 16),
                       ],
-                      if (_successMessage != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(_successMessage!, style: TextStyle(color: Colors.green.shade900)),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Report scam UPI IDs, phishing URLs, or fraud phone numbers to protect digital payment users.',
+                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                    ),
+                    const SizedBox(height: 20),
+
+                    if (_errorMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.threatRedBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.threatRed),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedType,
-                        decoration: InputDecoration(
-                          labelText: 'Scam Type',
-                          prefixIcon: const Icon(Icons.category_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        items: _types
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedType = val;
-                            });
-                          }
-                        },
+                        child: Text(_errorMessage!, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _dataController,
-                        decoration: InputDecoration(
-                          labelText: 'Fraud Target / Input',
-                          hintText: 'e.g. scammer@upi or +919876543210',
-                          prefixIcon: const Icon(Icons.title_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter the UPI ID, phone number or link';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _reasonController,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          labelText: 'Detailed Explanation / Reason',
-                          hintText: 'Describe how the fraud occurred...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please describe the fraud incident';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _proofController,
-                        decoration: InputDecoration(
-                          labelText: 'Proof / Reference Link (Optional)',
-                          hintText: 'Link to screenshot or payment ID',
-                          prefixIcon: const Icon(Icons.link_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        onPressed: _isLoading ? null : _submitReport,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          minimumSize: const Size.fromHeight(50),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Submit Fraud Report', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      ),
                     ],
-                  ),
+
+                    if (_successMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.safeGreenBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.safeGreen),
+                        ),
+                        child: Text(_successMessage!, style: const TextStyle(color: AppTheme.safeGreen, fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Scam Type',
+                        prefixIcon: Icon(Icons.category_rounded, color: AppTheme.cyberCyan),
+                      ),
+                      dropdownColor: AppTheme.cardBgElevated,
+                      items: _types
+                          .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(color: AppTheme.textPrimary))))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedType = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _dataController,
+                      decoration: const InputDecoration(
+                        labelText: 'Scam Target / UPI ID / Phone / URL',
+                        hintText: 'e.g. scammer@upi or 9876543210',
+                        prefixIcon: Icon(Icons.shield_outlined, color: AppTheme.cyberCyan),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter the fraudulent target handle/number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _reasonController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Incident Description / Details',
+                        hintText: 'Describe how the fraud attempt occurred...',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please provide details of the incident';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _proofController,
+                      decoration: const InputDecoration(
+                        labelText: 'Proof Evidence Reference / Txn ID (Optional)',
+                        hintText: 'e.g. Txn ID or screenshot link',
+                        prefixIcon: Icon(Icons.attachment_rounded, color: AppTheme.cyberCyan),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.threatRed,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _isLoading ? null : _submitReport,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.send_rounded, size: 20),
+                                SizedBox(width: 8),
+                                Text('SUBMIT FRAUD REPORT'),
+                              ],
+                            ),
+                    ),
+                  ],
                 ),
               ),
             ],

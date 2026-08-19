@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/theme/app_theme.dart';
 import '../models/scan_result.dart';
 import '../providers/app_providers.dart';
+import '../widgets/cyber_card.dart';
+import '../widgets/risk_result_card.dart';
 
 class UrlScannerScreen extends ConsumerStatefulWidget {
   const UrlScannerScreen({super.key});
@@ -13,7 +16,7 @@ class UrlScannerScreen extends ConsumerStatefulWidget {
 class _UrlScannerScreenState extends ConsumerState<UrlScannerScreen> {
   final _urlController = TextEditingController();
   bool _isLoading = false;
-  ScanResultModel? _result;
+  ScanResult? _result;
   String? _errorMessage;
 
   @override
@@ -23,8 +26,16 @@ class _UrlScannerScreenState extends ConsumerState<UrlScannerScreen> {
   }
 
   Future<void> _analyzeUrl() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) return;
+    var url = _urlController.text.trim();
+    if (url.isEmpty) {
+      setState(() => _errorMessage = 'Please enter or paste a website URL to scan.');
+      return;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+      _urlController.text = url;
+    }
 
     setState(() {
       _isLoading = true;
@@ -38,6 +49,7 @@ class _UrlScannerScreenState extends ConsumerState<UrlScannerScreen> {
       setState(() {
         _result = res;
       });
+      ref.read(historyStateProvider.notifier).loadHistory();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -51,25 +63,8 @@ class _UrlScannerScreenState extends ConsumerState<UrlScannerScreen> {
     }
   }
 
-  Color _getResultColor(String result) {
-    switch (result.toLowerCase()) {
-      case 'safe':
-        return Colors.green;
-      case 'warning':
-        return Colors.orange;
-      case 'dangerous':
-      case 'phishing':
-      case 'scam':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Phishing URL Scanner'),
@@ -79,102 +74,91 @@ class _UrlScannerScreenState extends ConsumerState<UrlScannerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Scan Web Link / URL',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Checks domain age, WHOIS, VirusTotal & phishing classifiers',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _urlController,
-                      keyboardType: TextInputType.url,
-                      decoration: InputDecoration(
-                        labelText: 'Website URL',
-                        hintText: 'https://example-fake-bank.com',
-                        prefixIcon: const Icon(Icons.link_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            CyberCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.link_rounded, color: AppTheme.cyberBlue, size: 22),
+                      SizedBox(width: 10),
+                      Text(
+                        'Scan Website URL for Phishing',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Evaluates domain structure, WHOIS, VirusTotal & Google Safe Browsing APIs',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _urlController,
+                    keyboardType: TextInputType.url,
+                    decoration: InputDecoration(
+                      labelText: 'Web Link URL',
+                      hintText: 'https://example-phishing-bank.com',
+                      prefixIcon: const Icon(Icons.language_rounded, color: AppTheme.cyberBlue),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: AppTheme.textMuted),
+                        onPressed: () => _urlController.clear(),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _isLoading ? null : _analyzeUrl,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text('Scan Link for Phishing', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
+                    onSubmitted: (_) => _analyzeUrl(),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _analyzeUrl,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('SCAN LINK FOR THREATS'),
+                            ],
+                          ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 16),
+
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
+                  color: AppTheme.threatRedBg,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.threatRed),
                 ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
-                ),
-              ),
-            if (_result != null) ...[
-              Card(
-                elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Domain Risk Status', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Chip(
-                            label: Text(
-                              _result!.result.toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                            backgroundColor: _getResultColor(_result!.result),
-                          ),
-                        ],
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppTheme.threatRed),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                       ),
-                      const SizedBox(height: 14),
-                      Text('Risk Score: ${_result!.score} / 10', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 10),
-                      Text('URL: ${_result!.inputData ?? _urlController.text}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                      const Divider(height: 24),
-                      const Text('Threat Analysis:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Text(_result!.reason.isNotEmpty ? _result!.reason : 'No phishing signatures detected.'),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+
+            if (_result != null) RiskResultCard(result: _result!),
           ],
         ),
       ),

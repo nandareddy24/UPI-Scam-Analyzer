@@ -5,22 +5,23 @@ class ReportRepository {
 
   ReportRepository({required this.apiClient});
 
-  Future<void> submitReport({
+  Future<String> submitReport({
     required String type,
     required String inputData,
     required String reason,
     String? proofData,
   }) async {
     try {
-      await apiClient.dio.post(
+      final response = await apiClient.dio.post(
         '/api/v1/reports',
         data: {
           'type': type,
-          'input_data': inputData,
+          'data': inputData,
           'reason': reason,
-          if (proofData != null) 'proof_data': proofData,
+          'proof': proofData ?? '',
         },
       );
+      return response.data['message'] ?? 'Scam report submitted successfully.';
     } catch (e) {
       throw ApiClient.getErrorMessage(e);
     }
