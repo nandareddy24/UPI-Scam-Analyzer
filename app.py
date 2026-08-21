@@ -1092,8 +1092,8 @@ def send_email(to_email, subject, body, html_content=None):
     # 4. Try SMTP fallback
     smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    sender_email = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL")
-    sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")
+    sender_email = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL") or "nandareddylinkdin@gmail.com"
+    sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD") or "rhly geyq ltae wfof"
 
     if sender_email and sender_password:
         clean_password = sender_password.strip().replace(" ", "")
@@ -1156,17 +1156,15 @@ def api_register():
     sent = send_email(email, "Scam Shield AI - Registration OTP", f"Your OTP is: {otp}", html_content=html)
 
     if not sent:
-        print(f"[OTP LOG - REGISTRATION] Email delivery unconfigured or blocked by cloud provider. OTP for {email}: {otp}", flush=True)
+        print(f"[OTP LOG - REGISTRATION] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
         return jsonify({
-            "status": "success",
-            "message": f"Verification OTP generated: {otp}. Please verify.",
-            "email": email,
-            "otp": otp
-        }), 200
+            "status": "error",
+            "message": "Unable to send verification OTP email. Please check your email address or try again later."
+        }), 503
 
     return jsonify({
         "status": "success",
-        "message": "OTP sent to email. Please verify to complete registration.",
+        "message": f"Verification code sent to {email}. Please check your inbox and spam folder.",
         "email": email
     }), 200
 
@@ -1252,17 +1250,15 @@ def api_resend_otp():
     sent = send_email(email, f"Scam Shield AI - Resent {action_label} OTP", f"Your OTP is: {otp}", html_content=html)
 
     if not sent:
-        print(f"[OTP LOG - RESEND] Email delivery unconfigured or blocked by cloud provider. OTP for {email} ({purpose}): {otp}", flush=True)
+        print(f"[OTP LOG - RESEND] Email delivery failed or unconfigured. OTP for {email} ({purpose}): {otp}", flush=True)
         return jsonify({
-            "status": "success",
-            "message": f"Fresh OTP generated: {otp}.",
-            "email": email,
-            "otp": otp
-        }), 200
+            "status": "error",
+            "message": "Unable to send OTP via email. Please check your email address or try again later."
+        }), 503
 
     return jsonify({
         "status": "success",
-        "message": f"Fresh OTP sent to {email}.",
+        "message": f"Fresh verification code sent to {email}. Please check your inbox.",
         "email": email
     }), 200
 
@@ -1365,15 +1361,9 @@ def register():
             html_content=html
         )
 
-        info_msg = None
-        if not sent:
-            print(f"[OTP LOG - WEB REGISTRATION] Email delivery unconfigured/blocked. OTP for {email}: {otp}", flush=True)
-            info_msg = f"Notice: Verification OTP generated is {otp} (email delivery unconfigured/blocked)."
-
         return render_template(
             "otp.html",
-            email=email,
-            info=info_msg
+            email=email
         )
 
     return render_template("register.html")
@@ -1508,17 +1498,15 @@ def api_forgot_password():
     sent = send_email(email, "Password Reset OTP", f"Your OTP is: {otp}", html_content=html)
 
     if not sent:
-        print(f"[OTP LOG - FORGOT PASSWORD] Email delivery unconfigured or blocked by cloud provider. OTP for {email}: {otp}", flush=True)
+        print(f"[OTP LOG - FORGOT PASSWORD] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
         return jsonify({
-            "status": "success",
-            "message": f"Reset OTP generated: {otp}.",
-            "email": email,
-            "otp": otp
-        }), 200
+            "status": "error",
+            "message": "Unable to send reset OTP email. Please check your email address or try again later."
+        }), 503
 
     return jsonify({
         "status": "success",
-        "message": "Reset OTP sent to your email.",
+        "message": f"Reset OTP sent to {email}. Please check your inbox and spam folder.",
         "email": email
     }), 200
 
@@ -1574,15 +1562,9 @@ def forgot():
             html_content=html
         )
 
-        info_msg = None
-        if not sent:
-            print(f"[OTP LOG - WEB FORGOT] Email delivery unconfigured or blocked by cloud provider. OTP for {email}: {otp}", flush=True)
-            info_msg = f"Notice: Password Reset OTP generated is {otp} (email delivery unconfigured/blocked)."
-
         return render_template(
             "reset_otp.html",
-            email=email,
-            info=info_msg
+            email=email
         )
 
     return render_template("forgot.html")
