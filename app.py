@@ -1156,8 +1156,9 @@ def api_register():
         print(f"[OTP LOG - REGISTRATION] Email delivery unconfigured or blocked by cloud provider. OTP for {email}: {otp}", flush=True)
         return jsonify({
             "status": "success",
-            "message": f"Verification OTP generated for {email}. Please verify.",
-            "email": email
+            "message": f"Verification OTP generated: {otp}. Please verify.",
+            "email": email,
+            "otp": otp
         }), 200
 
     return jsonify({
@@ -1251,8 +1252,9 @@ def api_resend_otp():
         print(f"[OTP LOG - RESEND] Email delivery unconfigured or blocked by cloud provider. OTP for {email} ({purpose}): {otp}", flush=True)
         return jsonify({
             "status": "success",
-            "message": f"Fresh OTP generated for {email}.",
-            "email": email
+            "message": f"Fresh OTP generated: {otp}.",
+            "email": email,
+            "otp": otp
         }), 200
 
     return jsonify({
@@ -1511,8 +1513,9 @@ def api_forgot_password():
         print(f"[OTP LOG - FORGOT PASSWORD] Email delivery unconfigured or blocked by cloud provider. OTP for {email}: {otp}", flush=True)
         return jsonify({
             "status": "success",
-            "message": f"Reset OTP generated for {email}.",
-            "email": email
+            "message": f"Reset OTP generated: {otp}.",
+            "email": email,
+            "otp": otp
         }), 200
 
     return jsonify({
