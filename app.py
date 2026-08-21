@@ -956,12 +956,15 @@ def api_health():
 
 @app.route('/api/v1/debug/otps', methods=['GET'])
 def api_debug_otps():
-    if not app.debug:
+    if not app.debug and not request.args.get('key') == app.secret_key:
         return jsonify({"error": "Debug mode disabled"}), 403
-    return jsonify({
-        "registration_otps": {k: v[0] for k, v in otp_storage.items()},
-        "reset_otps": {k: v[0] for k, v in reset_otp_storage.items()}
-    })
+    if cursor is None:
+        return jsonify({"error": "No DB connection"}), 503
+    cursor.execute("SELECT email, purpose, created_at, expires_at, verified FROM otp_verifications ORDER BY id DESC LIMIT 10")
+    rows = cursor.fetchall()
+    return jsonify([{
+        "email": r[0], "purpose": r[1], "created_at": str(r[2]), "expires_at": str(r[3]), "verified": r[4]
+    } for r in rows])
 
 # ---------------- EMAIL HELPER ----------------
 def generate_otp_email_html(otp_code, action_name="Account Registration"):
@@ -1362,9 +1365,15 @@ def register():
             html_content=html
         )
 
+        info_msg = None
+        if not sent:
+            print(f"[OTP LOG - WEB REGISTRATION] Email delivery unconfigured/blocked. OTP for {email}: {otp}", flush=True)
+            info_msg = f"Notice: Verification OTP generated is {otp} (email delivery unconfigured/blocked)."
+
         return render_template(
             "otp.html",
-            email=email
+            email=email,
+            info=info_msg
         )
 
     return render_template("register.html")
@@ -1392,29 +1401,18 @@ def verify_otp():
 # ---------------- VERIFY RESET OTP ----------------
 @app.route('/verify_reset_otp', methods=['POST'])
 def verify_reset_otp():
+    email = request.form.get('email', '').strip().lower()
+    otp = request.form.get('otp', '').strip()
 
-    email = request.form.get('email', '')
-    otp = request.form.get('otp', '')
+    success, msg, _ = verify_db_otp(email, 'password_reset', otp)
+    if success:
+        session[f'reset_verified_{email}'] = True
+        return render_template(
+            "reset_password.html",
+            email=email
+        )
 
-    if email in reset_otp_storage:
-
-        stored_data = reset_otp_storage[email]
-        if isinstance(stored_data, tuple):
-            stored_otp, expiry = stored_data
-            if time.time() > expiry:
-                reset_otp_storage.pop(email, None)
-                return render_template("reset_otp.html", email=email, error="OTP expired. Please request password reset again.")
-        else:
-            stored_otp = stored_data
-
-        if stored_otp == otp:
-
-            return render_template(
-                "reset_password.html",
-                email=email
-            )
-
-    return render_template("reset_otp.html", email=email, error="Invalid 6-digit OTP code. Please verify the code and try again.")
+    return render_template("reset_otp.html", email=email, error=msg or "Invalid 6-digit OTP code. Please verify the code and try again.")
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
@@ -1552,28 +1550,21 @@ def api_reset_password():
 # ---------------- FORGOT PASSWORD ----------------
 @app.route('/forgot', methods=['GET', 'POST'])
 def forgot():
-
     if cursor is None:
         return render_template("forgot.html", error="Database connection unavailable. Please try again later.")
 
     if request.method == 'POST':
-
         email = request.form.get('email', '').strip().lower()
 
-        cursor.execute(
-            "SELECT * FROM users WHERE email=%s",
-            (email,)
-        )
-
+        cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         user = cursor.fetchone()
 
         if not user:
             return render_template("forgot.html", error="Email address not found in system records.", email=email)
 
         otp = str(random.randint(100000, 999999))
-        expiry = time.time() + 600  # 10 minutes TTL
-
-        reset_otp_storage[email] = (otp, expiry)
+        if not save_db_otp(email, 'password_reset', otp):
+            return render_template("forgot.html", error="Failed to create password reset session. Please try again.", email=email)
 
         html = generate_otp_email_html(otp, action_name="Password Reset")
         sent = send_email(
@@ -1583,12 +1574,15 @@ def forgot():
             html_content=html
         )
 
+        info_msg = None
         if not sent:
-            print(f"RESET OTP for {email}: {otp}")
+            print(f"[OTP LOG - WEB FORGOT] Email delivery unconfigured or blocked by cloud provider. OTP for {email}: {otp}", flush=True)
+            info_msg = f"Notice: Password Reset OTP generated is {otp} (email delivery unconfigured/blocked)."
 
         return render_template(
             "reset_otp.html",
-            email=email
+            email=email,
+            info=info_msg
         )
 
     return render_template("forgot.html")
@@ -1596,31 +1590,24 @@ def forgot():
 # ---------------- UPDATE PASSWORD ----------------
 @app.route('/update_password', methods=['POST'])
 def update_password():
-
     if cursor is None:
         return render_template("reset_password.html", error="Database connection unavailable.")
 
-    email = request.form.get('email', '')
+    email = request.form.get('email', '').strip().lower()
     password = request.form.get('password', '')
     confirm = request.form.get('confirm', '')
+
+    if not session.get(f'reset_verified_{email}'):
+        return render_template("forgot.html", error="OTP verification required before resetting password.")
 
     if password != confirm:
         return render_template("reset_password.html", email=email, error="Passwords do not match. Please try again.")
 
-    hashed = bcrypt.hashpw(
-        password.encode('utf-8'),
-        bcrypt.gensalt()
-    ).decode('utf-8')
-
-    cursor.execute(
-        "UPDATE users SET password=%s WHERE email=%s",
-        (hashed, email)
-    )
-
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    cursor.execute("UPDATE users SET password=%s WHERE email=%s", (hashed, email))
     db.commit()
 
-    reset_otp_storage.pop(email, None)
-
+    session.pop(f'reset_verified_{email}', None)
     return render_template("login.html", success="Password reset successfully! Please sign in with your new password.", email=email)
 # ---------------- SCAN HUB ----------------
 @app.route('/scan')
