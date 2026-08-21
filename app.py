@@ -36,7 +36,7 @@ app = Flask(__name__)
 # Restrict CORS to specific origins if known, or at least common web use cases.
 # Native apps don't use CORS.
 CORS(app)
-app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
+app.secret_key = os.getenv("SECRET_KEY", "ScamShieldAI_Fixed_Production_Secret_2026")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
 
 # Flask Session Configuration for Android WebView Persistence
