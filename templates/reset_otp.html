@@ -43,6 +43,19 @@
         </div>
 
         <div class="card-white p-8">
+            <!-- Success Banner Alert -->
+            {% if success %}
+            <div class="mb-6 bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-extrabold text-sm border border-emerald-200">
+                    ✓
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Success</h4>
+                    <p class="text-xs font-medium text-emerald-700 mt-0.5 leading-relaxed">{{ success }}</p>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Error Banner Alert -->
             {% if error %}
             <div class="mb-6 bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm animate-shake">
@@ -65,6 +78,11 @@
                 <div class="flex-1">
                     <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider">Email Delivery Notice</h4>
                     <p class="text-xs font-medium text-amber-700 mt-0.5 leading-relaxed">{{ warning }}</p>
+                    {% if dev_otp %}
+                    <button type="button" onclick="document.querySelector('input[name=otp]').value='{{ dev_otp }}'" class="mt-2.5 text-xs font-bold bg-amber-200 hover:bg-amber-300 text-amber-900 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-sm cursor-pointer">
+                        ⚡ Auto-fill OTP ({{ dev_otp }})
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -92,10 +110,18 @@
                 </button>
             </form>
 
-            <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+            <div class="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
                 <a href="/forgot" class="text-xs text-slate-500 hover:text-slate-800">
                     ← Back to Reset Email Request
                 </a>
+
+                <form method="POST" action="/resend_otp" class="inline">
+                    <input type="hidden" name="email" value="{{ email }}">
+                    <input type="hidden" name="purpose" value="password_reset">
+                    <button type="submit" id="resendBtn" class="text-xs font-bold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer">
+                        🔄 Resend OTP Code
+                    </button>
+                </form>
             </div>
         </div>
     </div>

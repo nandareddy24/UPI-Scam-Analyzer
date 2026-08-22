@@ -1400,12 +1400,13 @@ def register():
         warning_msg = None
         if not sent:
             print(f"[OTP LOG - WEB REGISTRATION] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
-            warning_msg = "Email delivery failed or SMTP/API credentials not configured on server. If testing, check server console for your OTP code."
+            warning_msg = f"Email delivery unconfigured or unavailable. [DEMO OTP CODE: {otp}]"
 
         return render_template(
             "otp.html",
             email=email,
-            warning=warning_msg
+            warning=warning_msg,
+            dev_otp=otp if not sent else None
         )
 
     return render_template("register.html")
@@ -1610,15 +1611,64 @@ def forgot():
         warning_msg = None
         if not sent:
             print(f"[OTP LOG - WEB FORGOT] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
-            warning_msg = "Email delivery failed or SMTP/API credentials not configured on server. If testing, check server console for your OTP code."
+            warning_msg = f"Email delivery unconfigured or unavailable. [DEMO OTP CODE: {otp}]"
 
         return render_template(
             "reset_otp.html",
             email=email,
-            warning=warning_msg
+            warning=warning_msg,
+            dev_otp=otp if not sent else None
         )
 
     return render_template("forgot.html")
+
+# ---------------- WEB RESEND OTP ----------------
+@app.route('/resend_otp', methods=['POST'])
+def web_resend_otp():
+    if cursor is None:
+        return render_template("login.html", error="Database connection unavailable. Please check system status.")
+
+    email = request.form.get('email', '').strip().lower()
+    purpose = request.form.get('purpose', 'registration').strip().lower()
+
+    if not email:
+        return render_template("login.html", error="Email address is required to resend verification code.")
+
+    purpose_db = 'password_reset' if purpose in ['reset', 'password_reset'] else 'registration'
+
+    cursor.execute("""
+        SELECT payload_data FROM otp_verifications 
+        WHERE email=%s AND (purpose=%s OR purpose='reset' OR purpose='password_reset') AND verified=False 
+        ORDER BY id DESC LIMIT 1
+    """, (email, purpose_db))
+    row = cursor.fetchone()
+    payload = json.loads(row[0]) if (row and row[0]) else None
+
+    otp = str(random.randint(100000, 999999))
+    if not save_db_otp(email, purpose_db, otp, payload):
+        target_template = "reset_otp.html" if purpose_db == 'password_reset' else "otp.html"
+        return render_template(target_template, email=email, error="Failed to generate new verification code. Please try again.")
+
+    action_label = "Account Registration" if purpose_db == "registration" else "Password Reset"
+    html = generate_otp_email_html(otp, action_name=action_label)
+    sent = send_email(email, f"UPI Scam Analyzer - Resent {action_label} OTP", f"Your OTP is: {otp}", html_content=html)
+
+    warning_msg = None
+    success_msg = None
+    if sent:
+        success_msg = f"Fresh verification code sent to {email}. Please check your inbox and spam folder."
+    else:
+        print(f"[OTP LOG - WEB RESEND] Email delivery failed or unconfigured. OTP for {email} ({purpose_db}): {otp}", flush=True)
+        warning_msg = f"Email delivery unconfigured or unavailable. [DEMO OTP CODE: {otp}]"
+
+    target_template = "reset_otp.html" if purpose_db == 'password_reset' else "otp.html"
+    return render_template(
+        target_template,
+        email=email,
+        warning=warning_msg,
+        success=success_msg,
+        dev_otp=otp if not sent else None
+    )
 
 # ---------------- UPDATE PASSWORD ----------------
 @app.route('/update_password', methods=['POST'])
