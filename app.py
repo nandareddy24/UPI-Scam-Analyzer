@@ -1028,14 +1028,14 @@ def generate_otp_email_html(otp_code, action_name="Account Registration"):
 
 def send_email(to_email, subject, body, html_content=None):
     """
-    Sends an email using Brevo API (Sends to ANY recipient address free over HTTPS), SendGrid, Resend API, or SMTP.
+    Sends an email using Brevo API, SendGrid, Resend API, or SMTP.
     Returns True if sent successfully, False otherwise.
     """
-    # 1. Try Brevo API (Sendinblue) - Sends to ANY recipient email address over HTTPS without domain verification
+    # 1. Try Brevo API (Sendinblue)
     brevo_key = os.getenv("BREVO_API_KEY")
     if brevo_key:
         clean_brevo_key = brevo_key.strip().strip("'").strip('"')
-        if clean_brevo_key:
+        if clean_brevo_key and not clean_brevo_key.startswith("xkeysib-placeholder"):
             try:
                 url = "https://api.brevo.com/v3/smtp/email"
                 headers = {
@@ -1043,7 +1043,7 @@ def send_email(to_email, subject, body, html_content=None):
                     "content-type": "application/json",
                     "accept": "application/json"
                 }
-                sender = os.getenv("BREVO_SENDER_EMAIL") or os.getenv("SENDER_EMAIL")
+                sender = os.getenv("BREVO_SENDER_EMAIL") or os.getenv("SENDER_EMAIL") or "noreply@scamshield.ai"
                 payload = {
                     "sender": {"name": "Scam Shield AI", "email": sender},
                     "to": [{"email": to_email}],
@@ -1066,14 +1066,14 @@ def send_email(to_email, subject, body, html_content=None):
     sendgrid_key = os.getenv("SENDGRID_API_KEY")
     if sendgrid_key:
         clean_sg_key = sendgrid_key.strip().strip("'").strip('"')
-        if clean_sg_key:
+        if clean_sg_key and not clean_sg_key.startswith("SG.placeholder"):
             try:
                 url = "https://api.sendgrid.com/v3/mail/send"
                 headers = {
                     "Authorization": f"Bearer {clean_sg_key}",
                     "Content-Type": "application/json"
                 }
-                sender = os.getenv("SENDER_EMAIL")
+                sender = os.getenv("SENDER_EMAIL") or "noreply@scamshield.ai"
                 payload = {
                     "personalizations": [{"to": [{"email": to_email}]}],
                     "from": {"email": sender, "name": "Scam Shield AI"},
@@ -1093,7 +1093,7 @@ def send_email(to_email, subject, body, html_content=None):
     api_key = os.getenv("RESEND_API_KEY")
     if api_key:
         clean_api_key = api_key.strip().strip("'").strip('"')
-        if clean_api_key and not clean_api_key.startswith("e_your_api_key"):
+        if clean_api_key and not clean_api_key.startswith("re_placeholder") and not clean_api_key.startswith("e_your_api_key"):
             try:
                 resend.api_key = clean_api_key
                 payload = {
@@ -1118,14 +1118,20 @@ def send_email(to_email, subject, body, html_content=None):
     sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")
 
     if sender_email and sender_password:
+        clean_email = sender_email.strip().lower()
         clean_password = sender_password.strip().replace(" ", "")
-        # Prioritize configured port first (587 TLS vs 465 SSL)
+        
+        # Avoid attempting connection with dummy placeholders
+        if clean_email in ["dev_test@example.com", "your_email@gmail.com", "your_email"] or "placeholder" in clean_password:
+            print("[WARN] SMTP credentials set to default placeholders. Skipping live email dispatch.", flush=True)
+            return False
+
         ports_to_try = [(False, smtp_port), (True, 465)] if smtp_port == 587 else [(True, 465), (False, smtp_port)]
         for use_ssl, port in ports_to_try:
             try:
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = subject
-                msg["From"] = f"Scam Shield AI <{sender_email}>"
+                msg["From"] = f"Scam Shield AI <{clean_email}>"
                 msg["To"] = to_email
                 msg.attach(MIMEText(body, "plain"))
                 if html_content:
@@ -1133,13 +1139,13 @@ def send_email(to_email, subject, body, html_content=None):
 
                 if use_ssl:
                     with smtplib.SMTP_SSL(smtp_server, port, timeout=5) as server:
-                        server.login(sender_email, clean_password)
-                        server.sendmail(sender_email, to_email, msg.as_string())
+                        server.login(clean_email, clean_password)
+                        server.sendmail(clean_email, to_email, msg.as_string())
                 else:
                     with smtplib.SMTP(smtp_server, port, timeout=5) as server:
                         server.starttls()
-                        server.login(sender_email, clean_password)
-                        server.sendmail(sender_email, to_email, msg.as_string())
+                        server.login(clean_email, clean_password)
+                        server.sendmail(clean_email, to_email, msg.as_string())
 
                 print(f"[OK] OTP Email sent via SMTP (port {port}) to {to_email}", flush=True)
                 return True
@@ -1147,7 +1153,7 @@ def send_email(to_email, subject, body, html_content=None):
                 port_desc = f"SMTP_SSL Port {port}" if use_ssl else f"SMTP Port {port}"
                 print(f"[WARN] {port_desc} Error: {str(e)}", flush=True)
 
-    print("[WARN] No email credentials or all options failed. Email NOT delivered.", flush=True)
+    print("[WARN] No valid email credentials configured or delivery failed. Email NOT sent.", flush=True)
     return False
 
 # ---------------- MOBILE AUTH API ----------------
@@ -1391,9 +1397,15 @@ def register():
             html_content=html
         )
 
+        warning_msg = None
+        if not sent:
+            print(f"[OTP LOG - WEB REGISTRATION] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
+            warning_msg = "Email delivery failed or SMTP/API credentials not configured on server. If testing, check server console for your OTP code."
+
         return render_template(
             "otp.html",
-            email=email
+            email=email,
+            warning=warning_msg
         )
 
     return render_template("register.html")
@@ -1595,9 +1607,15 @@ def forgot():
             html_content=html
         )
 
+        warning_msg = None
+        if not sent:
+            print(f"[OTP LOG - WEB FORGOT] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
+            warning_msg = "Email delivery failed or SMTP/API credentials not configured on server. If testing, check server console for your OTP code."
+
         return render_template(
             "reset_otp.html",
-            email=email
+            email=email,
+            warning=warning_msg
         )
 
     return render_template("forgot.html")

@@ -56,6 +56,19 @@
             </div>
             {% endif %}
 
+            <!-- Warning Banner Alert -->
+            {% if warning %}
+            <div class="mb-6 bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
+                <div class="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0 font-extrabold text-sm border border-amber-200">
+                    ⚠️
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider">Email Delivery Notice</h4>
+                    <p class="text-xs font-medium text-amber-700 mt-0.5 leading-relaxed">{{ warning }}</p>
+                </div>
+            </div>
+            {% endif %}
+
             <p class="text-xs text-slate-500 mb-6 text-center leading-relaxed">
                 A 6-digit verification code has been sent directly to <br><span class="font-bold text-slate-800">{{ email }}</span>. Please check your inbox & spam folder.
             </p>
