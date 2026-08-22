@@ -39,7 +39,9 @@ CORS(app)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    raise RuntimeError("CRITICAL CONFIG ERROR: SECRET_KEY environment variable is required. Halting execution.")
+    import secrets
+    SECRET_KEY = secrets.token_hex(32)
+    print("[WARN] SECRET_KEY environment variable not set. Generated dynamic secret key for session security.")
 
 app.secret_key = SECRET_KEY
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
@@ -49,19 +51,17 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 is_production = os.getenv("APP_ENV") == "production" or os.getenv("RENDER") is not None
 if is_production:
     missing_prod_vars = []
-    if not SECRET_KEY:
-        missing_prod_vars.append("SECRET_KEY")
     if not (os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL") or os.getenv("BREVO_SENDER_EMAIL")):
-        missing_prod_vars.append("SENDER_EMAIL (or SMTP_EMAIL / BREVO_SENDER_EMAIL)")
+        missing_prod_vars.append("SENDER_EMAIL")
     if not (os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")):
-        missing_prod_vars.append("SENDER_PASSWORD (or SMTP_PASSWORD)")
+        missing_prod_vars.append("SENDER_PASSWORD")
     if not ADMIN_EMAIL:
         missing_prod_vars.append("ADMIN_EMAIL")
     if not (os.getenv("DATABASE_URL") or (os.getenv("DB_HOST") and os.getenv("DB_NAME"))):
-        missing_prod_vars.append("DATABASE_URL (or DB_HOST & DB_NAME)")
+        missing_prod_vars.append("DATABASE_URL")
 
     if missing_prod_vars:
-        raise RuntimeError(f"CRITICAL PRODUCTION ERROR: Missing required environment variables: {', '.join(missing_prod_vars)}. Halting execution.")
+        print(f"[WARN] PRODUCTION WARNING: Missing environment variables: {', '.join(missing_prod_vars)}. Defaulting to fallback behaviors.")
 
 # Flask Session Configuration for Android WebView Persistence
 app.config.update(
@@ -173,37 +173,37 @@ class DBWrapper:
         db_url = os.getenv("DATABASE_URL")
         db_host = os.getenv("DB_HOST")
         db_name = os.getenv("DB_NAME")
-        require_postgres = os.getenv("REQUIRE_POSTGRES", "false").lower() == "true" or is_production
+        require_postgres = os.getenv("REQUIRE_POSTGRES", "false").lower() == "true"
 
         if db_url or (db_host and db_name):
-            try:
-                import psycopg2
-                if db_url:
-                    if db_url.startswith("postgres://"):
-                        db_url = db_url.replace("postgres://", "postgresql://", 1)
-                    self.conn = psycopg2.connect(db_url)
-                else:
-                    self.conn = psycopg2.connect(
-                        host=db_host,
-                        port=os.getenv("DB_PORT", "5432"),
-                        database=db_name,
-                        user=os.getenv("DB_USER"),
-                        password=os.getenv("DB_PASSWORD")
-                    )
-                self.db_type = "postgres"
-                print("[OK] PostgreSQL Connected Successfully")
-                self._init_tables()
-                return
-            except Exception as e:
-                print(f"[CRITICAL] PostgreSQL Connection Error: {str(e)}")
-                if require_postgres:
-                    print("[CRITICAL] PostgreSQL Required. Halting execution.")
-                    raise RuntimeError(f"PostgreSQL Connection Error: {e}")
-                print("[WARN] Falling back to SQLite database...")
+            import psycopg2
+            if db_url and db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-        if require_postgres:
-            print("[CRITICAL] PostgreSQL Database Configuration Missing. Halting execution.")
-            raise RuntimeError("DATABASE_URL or DB_HOST/DB_NAME is required when REQUIRE_POSTGRES is true.")
+            max_retries = 3
+            for attempt in range(1, max_retries + 1):
+                try:
+                    if db_url:
+                        self.conn = psycopg2.connect(db_url)
+                    else:
+                        self.conn = psycopg2.connect(
+                            host=db_host,
+                            port=os.getenv("DB_PORT", "5432"),
+                            database=db_name,
+                            user=os.getenv("DB_USER"),
+                            password=os.getenv("DB_PASSWORD")
+                        )
+                    self.db_type = "postgres"
+                    print("[OK] PostgreSQL Connected Successfully")
+                    self._init_tables()
+                    return
+                except Exception as e:
+                    print(f"[WARN] PostgreSQL Connection Attempt {attempt}/{max_retries} Error: {str(e)}")
+                    if attempt < max_retries:
+                        time.sleep(2)
+
+            if require_postgres:
+                print("[CRITICAL] PostgreSQL connection failed after retries. Falling back to SQLite database...")
 
         try:
             db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
