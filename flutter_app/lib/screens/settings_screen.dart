@@ -108,6 +108,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     'Configure API endpoint for local development (10.0.2.2:5000), Wi-Fi LAN IP, or production Cloud.',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Active Environment Indicator Badge / Warning Banner
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: currentUrl == ApiConfig.defaultProductionUrl
+                          ? AppTheme.safeGreen.withOpacity(0.12)
+                          : AppTheme.warningYellow.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: currentUrl == ApiConfig.defaultProductionUrl
+                            ? AppTheme.safeGreen
+                            : AppTheme.warningYellow,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              currentUrl == ApiConfig.defaultProductionUrl
+                                  ? Icons.cloud_done_rounded
+                                  : Icons.warning_amber_rounded,
+                              color: currentUrl == ApiConfig.defaultProductionUrl
+                                  ? AppTheme.safeGreen
+                                  : AppTheme.warningYellow,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                currentUrl == ApiConfig.defaultProductionUrl
+                                    ? 'CONNECTED TO PRODUCTION CLOUD'
+                                    : '⚠️ DEV ENDPOINT ACTIVE (${ApiConfig.environmentName})',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                  color: currentUrl == ApiConfig.defaultProductionUrl
+                                      ? AppTheme.safeGreen
+                                      : AppTheme.warningYellow,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          currentUrl == ApiConfig.defaultProductionUrl
+                              ? 'App is currently connected to the live production database ($currentUrl).'
+                              : '⚠️ ATTENTION: App is currently pointed at a non-production backend ($currentUrl). Data created here will NOT be reflected in the web application or production database.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.3,
+                            color: currentUrl == ApiConfig.defaultProductionUrl
+                                ? AppTheme.textMuted
+                                : AppTheme.warningYellow.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 14),
 
                   // Quick presets
@@ -116,10 +183,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     runSpacing: 8,
                     children: [
                       ActionChip(
+                        avatar: const Icon(Icons.cloud_outlined, size: 14),
                         label: const Text('Production Cloud'),
-                        backgroundColor: currentUrl.contains('onrender') ? AppTheme.cyberCyan : AppTheme.cardBgElevated,
+                        backgroundColor: currentUrl == ApiConfig.defaultProductionUrl ? AppTheme.cyberCyan : AppTheme.cardBgElevated,
                         labelStyle: TextStyle(
-                          color: currentUrl.contains('onrender') ? Colors.black : AppTheme.textPrimary,
+                          color: currentUrl == ApiConfig.defaultProductionUrl ? Colors.black : AppTheme.textPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
@@ -130,16 +198,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         },
                       ),
                       ActionChip(
-                        label: const Text('Android Emulator (10.0.2.2:5000)'),
-                        backgroundColor: currentUrl.contains('10.0.2.2') ? AppTheme.cyberCyan : AppTheme.cardBgElevated,
+                        avatar: const Icon(Icons.phone_android_rounded, size: 14),
+                        label: const Text('Android Emulator'),
+                        backgroundColor: currentUrl == ApiConfig.defaultEmulatorUrl ? AppTheme.cyberCyan : AppTheme.cardBgElevated,
                         labelStyle: TextStyle(
-                          color: currentUrl.contains('10.0.2.2') ? Colors.black : AppTheme.textPrimary,
+                          color: currentUrl == ApiConfig.defaultEmulatorUrl ? Colors.black : AppTheme.textPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
                         onPressed: () {
                           _urlController.text = ApiConfig.defaultEmulatorUrl;
                           ref.read(baseUrlProvider.notifier).updateUrl(ApiConfig.defaultEmulatorUrl);
+                          ref.invalidate(healthStatusProvider);
+                        },
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.wifi_rounded, size: 14),
+                        label: const Text('Local Wi-Fi'),
+                        backgroundColor: currentUrl == ApiConfig.defaultLocalUrl ? AppTheme.cyberCyan : AppTheme.cardBgElevated,
+                        labelStyle: TextStyle(
+                          color: currentUrl == ApiConfig.defaultLocalUrl ? Colors.black : AppTheme.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                        onPressed: () {
+                          _urlController.text = ApiConfig.defaultLocalUrl;
+                          ref.read(baseUrlProvider.notifier).updateUrl(ApiConfig.defaultLocalUrl);
                           ref.invalidate(healthStatusProvider);
                         },
                       ),

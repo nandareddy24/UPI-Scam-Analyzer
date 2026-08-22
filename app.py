@@ -36,8 +36,32 @@ app = Flask(__name__)
 # Restrict CORS to specific origins if known, or at least common web use cases.
 # Native apps don't use CORS.
 CORS(app)
-app.secret_key = os.getenv("SECRET_KEY", "ScamShieldAI_Fixed_Production_Secret_2026")
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("CRITICAL CONFIG ERROR: SECRET_KEY environment variable is required. Halting execution.")
+
+app.secret_key = SECRET_KEY
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", app.secret_key)
+
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
+
+is_production = os.getenv("APP_ENV") == "production" or os.getenv("RENDER") is not None
+if is_production:
+    missing_prod_vars = []
+    if not SECRET_KEY:
+        missing_prod_vars.append("SECRET_KEY")
+    if not (os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL") or os.getenv("BREVO_SENDER_EMAIL")):
+        missing_prod_vars.append("SENDER_EMAIL (or SMTP_EMAIL / BREVO_SENDER_EMAIL)")
+    if not (os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")):
+        missing_prod_vars.append("SENDER_PASSWORD (or SMTP_PASSWORD)")
+    if not ADMIN_EMAIL:
+        missing_prod_vars.append("ADMIN_EMAIL")
+    if not (os.getenv("DATABASE_URL") or (os.getenv("DB_HOST") and os.getenv("DB_NAME"))):
+        missing_prod_vars.append("DATABASE_URL (or DB_HOST & DB_NAME)")
+
+    if missing_prod_vars:
+        raise RuntimeError(f"CRITICAL PRODUCTION ERROR: Missing required environment variables: {', '.join(missing_prod_vars)}. Halting execution.")
 
 # Flask Session Configuration for Android WebView Persistence
 app.config.update(
@@ -46,8 +70,6 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,  # Set to False for local Wi-Fi HTTP
     PERMANENT_SESSION_LIFETIME=604800 # 7 days persistence
 )
-
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "nandakumarreddy63@gmail.com")
 
 # ---------------- AUTH HELPERS ----------------
 
@@ -151,7 +173,7 @@ class DBWrapper:
         db_url = os.getenv("DATABASE_URL")
         db_host = os.getenv("DB_HOST")
         db_name = os.getenv("DB_NAME")
-        require_postgres = os.getenv("REQUIRE_POSTGRES", "false").lower() == "true"
+        require_postgres = os.getenv("REQUIRE_POSTGRES", "false").lower() == "true" or is_production
 
         if db_url or (db_host and db_name):
             try:
@@ -1021,7 +1043,7 @@ def send_email(to_email, subject, body, html_content=None):
                     "content-type": "application/json",
                     "accept": "application/json"
                 }
-                sender = os.getenv("BREVO_SENDER_EMAIL", "nandakumarreddy63@gmail.com")
+                sender = os.getenv("BREVO_SENDER_EMAIL") or os.getenv("SENDER_EMAIL")
                 payload = {
                     "sender": {"name": "Scam Shield AI", "email": sender},
                     "to": [{"email": to_email}],
@@ -1051,7 +1073,7 @@ def send_email(to_email, subject, body, html_content=None):
                     "Authorization": f"Bearer {clean_sg_key}",
                     "Content-Type": "application/json"
                 }
-                sender = os.getenv("SENDER_EMAIL", "nandareddylinkdin@gmail.com")
+                sender = os.getenv("SENDER_EMAIL")
                 payload = {
                     "personalizations": [{"to": [{"email": to_email}]}],
                     "from": {"email": sender, "name": "Scam Shield AI"},
@@ -1092,8 +1114,8 @@ def send_email(to_email, subject, body, html_content=None):
     # 4. Try SMTP fallback
     smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    sender_email = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL") or "nandareddylinkdin@gmail.com"
-    sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD") or "rhly geyq ltae wfof"
+    sender_email = os.getenv("SENDER_EMAIL") or os.getenv("SMTP_EMAIL")
+    sender_password = os.getenv("SENDER_PASSWORD") or os.getenv("SMTP_PASSWORD")
 
     if sender_email and sender_password:
         clean_password = sender_password.strip().replace(" ", "")
@@ -1158,9 +1180,10 @@ def api_register():
     if not sent:
         print(f"[OTP LOG - REGISTRATION] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
         return jsonify({
-            "status": "error",
-            "message": "Unable to send verification OTP email. Please check your email address or try again later."
-        }), 503
+            "status": "success",
+            "message": f"Verification OTP code created for {email}. Please check your inbox or server log.",
+            "email": email
+        }), 200
 
     return jsonify({
         "status": "success",
@@ -1203,6 +1226,9 @@ def api_verify_registration():
             return jsonify({"status": "error", "message": str(e)}), 500
 
     token = create_token(user_id)
+    session.permanent = True
+    session['user'] = email
+    session['token'] = token
     is_admin = (email == ADMIN_EMAIL)
     return jsonify({
         "status": "success",
@@ -1252,9 +1278,10 @@ def api_resend_otp():
     if not sent:
         print(f"[OTP LOG - RESEND] Email delivery failed or unconfigured. OTP for {email} ({purpose}): {otp}", flush=True)
         return jsonify({
-            "status": "error",
-            "message": "Unable to send OTP via email. Please check your email address or try again later."
-        }), 503
+            "status": "success",
+            "message": f"Fresh verification code generated for {email}. Please check your inbox or server log.",
+            "email": email
+        }), 200
 
     return jsonify({
         "status": "success",
@@ -1290,6 +1317,9 @@ def api_login():
         if bcrypt.checkpw(password.encode('utf-8'), stored):
             is_admin = (user[2] == ADMIN_EMAIL)
             token = create_token(user[0])
+            session.permanent = True
+            session['user'] = user[2]
+            session['token'] = token
             return jsonify({
                 "status": "success",
                 "message": "Login successful",
@@ -1443,8 +1473,10 @@ def login():
                 password.encode('utf-8'),
                 stored
             ):
+                token = create_token(user[0])
                 session.permanent = True
                 session['user'] = email
+                session['token'] = token
 
                 # Check for mobile parameter from query string or hidden form field
                 is_mobile = request.args.get('mobile') == '1' or request.form.get('mobile') == '1'
@@ -1500,9 +1532,10 @@ def api_forgot_password():
     if not sent:
         print(f"[OTP LOG - FORGOT PASSWORD] Email delivery failed or unconfigured. OTP for {email}: {otp}", flush=True)
         return jsonify({
-            "status": "error",
-            "message": "Unable to send reset OTP email. Please check your email address or try again later."
-        }), 503
+            "status": "success",
+            "message": f"Reset OTP created for {email}. Please check your inbox or server log.",
+            "email": email
+        }), 200
 
     return jsonify({
         "status": "success",
@@ -2281,6 +2314,43 @@ def api_mobile_history():
         return jsonify({"status": "success", "items": scans})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/v1/scans/sync', methods=['POST'])
+@token_required
+def api_sync_scans():
+    uid = getattr(request, 'user_id', None)
+    if not uid:
+        return jsonify({"status": "error", "message": "Authentication required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    items = data.get('items', [])
+    if not isinstance(items, list):
+        return jsonify({"status": "error", "message": "items must be a list"}), 400
+
+    synced_count = 0
+    if cursor is not None:
+        for item in items:
+            t = item.get('type', 'SCAN')
+            inp = item.get('input_data') or item.get('data') or ''
+            sc = item.get('score', 0)
+            res = item.get('result', 'Safe')
+            if inp:
+                try:
+                    cursor.execute(
+                        "SELECT id FROM scans WHERE user_id=%s AND type=%s AND input_data=%s",
+                        (uid, t, inp)
+                    )
+                    if not cursor.fetchone():
+                        cursor.execute(
+                            "INSERT INTO scans (user_id, type, input_data, score, result) VALUES (%s, %s, %s, %s, %s)",
+                            (uid, t, inp, sc, res)
+                        )
+                        synced_count += 1
+                except Exception as e:
+                    print("Sync item error:", e)
+        db.commit()
+
+    return jsonify({"status": "success", "message": f"Synced {synced_count} items", "synced_count": synced_count})
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":

@@ -14,6 +14,19 @@ class ApiConfig {
 
   static String get baseUrl => _currentBaseUrl;
 
+  static bool get isProduction => _currentBaseUrl == defaultProductionUrl;
+
+  static String get environmentName {
+    if (_currentBaseUrl == defaultProductionUrl) {
+      return 'Production Cloud';
+    } else if (_currentBaseUrl == defaultEmulatorUrl) {
+      return 'Android Emulator';
+    } else if (_currentBaseUrl == defaultLocalUrl) {
+      return 'Local Wi-Fi Network';
+    }
+    return 'Custom Endpoint';
+  }
+
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _currentBaseUrl = prefs.getString(keyBaseUrl) ?? defaultProductionUrl;

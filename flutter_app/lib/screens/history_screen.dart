@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../core/theme/app_theme.dart';
 import '../models/scan_result.dart';
 import '../providers/app_providers.dart';
@@ -99,24 +100,39 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Expanded(
             child: historyState.when(
               loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.cyberCyan)),
-              error: (err, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.threatRed),
-                      const SizedBox(height: 12),
-                      Text(err.toString(), textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => ref.read(historyStateProvider.notifier).loadHistory(),
-                        child: const Text('RETRY LOADING HISTORY'),
-                      ),
-                    ],
+              error: (err, _) {
+                final errStr = err.toString();
+                final isAuthErr = errStr.toLowerCase().contains('authentication') ||
+                    errStr.toLowerCase().contains('token') ||
+                    errStr.toLowerCase().contains('invalid') ||
+                    errStr.toLowerCase().contains('missing');
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(isAuthErr ? Icons.lock_rounded : Icons.wifi_off_rounded, size: 54, color: AppTheme.threatRed),
+                        const SizedBox(height: 14),
+                        Text(errStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                        const SizedBox(height: 20),
+                        if (isAuthErr)
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.login_rounded),
+                            label: const Text('LOG IN TO VIEW HISTORY'),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyberCyan, foregroundColor: Colors.black),
+                            onPressed: () => context.go('/login'),
+                          )
+                        else
+                          ElevatedButton(
+                            onPressed: () => ref.read(historyStateProvider.notifier).loadHistory(),
+                            child: const Text('RETRY LOADING HISTORY'),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
               data: (allItems) {
                 // Apply Search & Filter Logic
                 final filtered = allItems.where((item) {

@@ -11,7 +11,23 @@ class HistoryRepository {
     // 1. Load local scan history
     final localList = await LocalHistoryService.getHistory();
 
-    // 2. Fetch remote scan history from backend if available
+    // 2. Sync local unsynced scan items to backend if online and authenticated
+    try {
+      final token = await apiClient.storageService.getToken();
+      if (token != null && token.isNotEmpty && localList.isNotEmpty) {
+        final syncPayload = localList.map((e) => {
+          'type': e.type,
+          'input_data': e.inputData,
+          'score': e.score,
+          'result': e.result,
+        }).toList();
+        await apiClient.dio.post('/api/v1/scans/sync', data: {'items': syncPayload});
+      }
+    } catch (_) {
+      // Ignore sync network errors silently
+    }
+
+    // 3. Fetch remote scan history from backend if available
     try {
       final response = await apiClient.dio.get('/api/v1/scans/history');
       final data = response.data;

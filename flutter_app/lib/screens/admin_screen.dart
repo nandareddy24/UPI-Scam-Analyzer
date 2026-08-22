@@ -176,11 +176,26 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.security, size: 48, color: Colors.red),
-                        const SizedBox(height: 12),
-                        Text(_errorMessage!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        FilledButton(onPressed: _fetchAdminData, child: const Text('Retry')),
+                        const Icon(Icons.security, size: 54, color: AppTheme.threatRed),
+                        const SizedBox(height: 14),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 20),
+                        if (_errorMessage!.toLowerCase().contains('authentication') ||
+                            _errorMessage!.toLowerCase().contains('token') ||
+                            _errorMessage!.toLowerCase().contains('invalid') ||
+                            _errorMessage!.toLowerCase().contains('missing'))
+                          FilledButton.icon(
+                            icon: const Icon(Icons.login_rounded),
+                            label: const Text('LOG IN AGAIN'),
+                            style: FilledButton.styleFrom(backgroundColor: AppTheme.cyberCyan, foregroundColor: Colors.black),
+                            onPressed: () => context.go('/login'),
+                          )
+                        else
+                          FilledButton(onPressed: _fetchAdminData, child: const Text('Retry')),
                       ],
                     ),
                   ),
