@@ -53,9 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
       res = AnalyzerService.analyzeOcrQr('scanned_image.png', text);
     }
 
-    if (uid.isNotEmpty) {
-      FirestoreService().saveScan(uid, res);
-    }
+    final targetUid = uid.isNotEmpty ? uid : 'local_user';
+    FirestoreService().saveScan(targetUid, res);
 
     if (!mounted) return;
     setState(() {
@@ -576,12 +575,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 10),
               StreamBuilder<List<ScanResult>>(
-                stream: FirestoreService().watchHistory(uid),
+                stream: FirestoreService().watchHistory(uid.isNotEmpty ? uid : 'local_user'),
+                initialData: FirestoreService().currentHistory,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  final scans = snapshot.data ?? FirestoreService().currentHistory;
+                  if (scans.isEmpty && snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppTheme.primary)));
                   }
-                  if (snapshot.hasError) {
+                  if (snapshot.hasError && scans.isEmpty) {
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -596,7 +597,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   }
-                  final scans = snapshot.data ?? [];
                   if (scans.isEmpty) {
                     return Container(
                       width: double.infinity,

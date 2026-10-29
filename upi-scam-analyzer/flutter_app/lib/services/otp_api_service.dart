@@ -25,18 +25,21 @@ class OtpApiService {
       case TargetPlatform.android:
         return [
           'http://10.0.2.2:4000',      // Android emulator loopback
-          'http://172.20.143.80:4000', // Wi-Fi LAN IP
-          'http://localhost:4000',
+          'http://localhost:4000',     // via adb reverse tcp:4000 tcp:4000
+          'http://192.168.31.243:4000', // Wi-Fi LAN IP
+          'http://172.20.143.80:4000',
         ];
       case TargetPlatform.iOS:
         return [
           'http://localhost:4000',      // iOS simulator
-          'http://172.20.143.80:4000', // Wi-Fi LAN IP
+          'http://192.168.31.243:4000', // Wi-Fi LAN IP
+          'http://172.20.143.80:4000',
         ];
       default:
         return [
           'http://localhost:4000',
           'http://127.0.0.1:4000',
+          'http://192.168.31.243:4000',
           'http://172.20.143.80:4000',
         ];
     }
@@ -48,6 +51,14 @@ class OtpApiService {
 
   static Future<ApiResult> verifyOtp(String email, String otp) async {
     return _post('/api/verify-otp', {'email': email, 'otp': otp});
+  }
+
+  static Future<ApiResult> resetPassword(String email, String otp, String newPassword) async {
+    return _post('/api/reset-password', {
+      'email': email,
+      'otp': otp,
+      'newPassword': newPassword,
+    });
   }
 
   static Future<ApiResult> _post(String path, Map<String, dynamic> body) async {

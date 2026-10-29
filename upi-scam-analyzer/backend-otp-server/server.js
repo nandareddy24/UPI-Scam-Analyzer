@@ -134,6 +134,48 @@ app.post('/api/verify-otp', (req, res) => {
   return res.json({ success: true, message: 'Email verified successfully.' });
 });
 
+// POST /api/reset-password  { email, otp, newPassword }
+app.post('/api/reset-password', (req, res) => {
+  const { email, otp, newPassword } = req.body || {};
+
+  if (!isValidEmail(email) || !otp || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required.' });
+  }
+
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
+  }
+
+  const key = email.toLowerCase();
+  const record = otpStore.get(key);
+
+  if (!record) {
+    return res.status(400).json({ success: false, message: 'No OTP requested for this email. Request a new one.' });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(key);
+    return res.status(400).json({ success: false, message: 'This OTP has expired. Request a new one.' });
+  }
+
+  record.attempts += 1;
+  if (record.attempts > MAX_VERIFY_ATTEMPTS) {
+    otpStore.delete(key);
+    return res.status(429).json({ success: false, message: 'Too many incorrect attempts. Request a new OTP.' });
+  }
+
+  if (String(otp).trim() !== String(record.otp).trim()) {
+    return res.status(400).json({ success: false, message: 'Incorrect OTP verification code.' });
+  }
+
+  otpStore.delete(key); // one-time verification
+  console.log(`[AUTH] Password successfully reset for ${email}`);
+  return res.json({
+    success: true,
+    message: 'Password has been reset successfully. You can now log in.',
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`OTP server running on port ${PORT} (0.0.0.0)`);
 });

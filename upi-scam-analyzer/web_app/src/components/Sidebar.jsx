@@ -86,16 +86,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div>
-        {/* Protection App Card */}
-        <div className="bg-[#052e16] p-4 rounded-2xl text-white mb-6 shadow-sm border border-emerald-900/50">
-          <h4 className="font-bold text-sm text-emerald-100">Get Protection App</h4>
-          <p className="text-xs text-emerald-300/80 mt-1 mb-3">Real-time scam protection on mobile.</p>
-          <button className="w-full bg-[#047857] hover:bg-[#065f46] text-white py-2 rounded-xl text-xs font-bold transition shadow-sm">
-            Download App
-          </button>
-        </div>
-
+      <div className="pt-4 border-t border-slate-100">
         {/* Logout Link */}
         <button
           onClick={handleLogout}

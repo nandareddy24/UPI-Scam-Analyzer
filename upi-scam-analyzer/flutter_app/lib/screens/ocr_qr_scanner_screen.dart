@@ -35,10 +35,8 @@ class _OcrQrScannerScreenState extends State<OcrQrScannerScreen> {
       sample.isEmpty ? 'Suspicious UPI VPA extracted: refund-care@ybl' : sample,
     );
 
-    final uid = AuthService().currentUser?.uid;
-    if (uid != null) {
-      FirestoreService().saveScan(uid, result);
-    }
+    final uid = AuthService().currentUser?.uid ?? 'local_user';
+    FirestoreService().saveScan(uid, result.copyWith(id: 'ocr_${DateTime.now().millisecondsSinceEpoch}'));
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -55,10 +53,8 @@ class _OcrQrScannerScreenState extends State<OcrQrScannerScreen> {
       payload.isEmpty ? 'upi://pay?pa=scamuser@ybl&pn=FakeRefundCare&am=4999' : payload,
     );
 
-    final uid = AuthService().currentUser?.uid;
-    if (uid != null) {
-      FirestoreService().saveScan(uid, result);
-    }
+    final uid = AuthService().currentUser?.uid ?? 'local_user';
+    FirestoreService().saveScan(uid, result.copyWith(id: 'ocr_${DateTime.now().millisecondsSinceEpoch}'));
 
     if (!mounted) return;
     setState(() => _loading = false);

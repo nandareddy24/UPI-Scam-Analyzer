@@ -29,10 +29,8 @@ class _UpiAnalyzerScreenState extends State<UpiAnalyzerScreen> {
     setState(() => _loading = true);
     final result = AnalyzerService.analyzeUpiId(text);
 
-    final uid = AuthService().currentUser?.uid;
-    if (uid != null) {
-      FirestoreService().saveScan(uid, result);
-    }
+    final uid = AuthService().currentUser?.uid ?? 'local_user';
+    FirestoreService().saveScan(uid, result.copyWith(id: 'upi_${DateTime.now().millisecondsSinceEpoch}'));
 
     if (!mounted) return;
     setState(() => _loading = false);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 import 'signup_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -171,6 +172,34 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (v) =>
                                 (v == null || v.isEmpty) ? 'Enter your password' : null,
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _loading
+                                  ? null
+                                  : () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ForgotPasswordScreen(
+                                            initialEmail: _emailCtrl.text.trim(),
+                                          ),
+                                        ),
+                                      ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: AppTheme.accentCyan,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 14),

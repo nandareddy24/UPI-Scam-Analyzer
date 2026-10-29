@@ -109,29 +109,30 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = AuthService().currentUser?.uid;
+    final effectiveUid = (uid != null && uid.isNotEmpty) ? uid : 'local_user';
+    final initialHistory = FirestoreService().currentHistory;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan Audit History', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          if (uid != null)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded, color: AppTheme.textMuted),
-              tooltip: 'Clear All History',
-              onPressed: () => _confirmClearAll(context, uid),
-            ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_rounded, color: AppTheme.textMuted),
+            tooltip: 'Clear All History',
+            onPressed: () => _confirmClearAll(context, effectiveUid),
+          ),
         ],
       ),
-      body: uid == null
-          ? const Center(child: Text('Not signed in.', style: TextStyle(color: AppTheme.textMuted)))
-          : StreamBuilder<List<ScanResult>>(
-              stream: FirestoreService().watchHistory(uid),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-                }
-                if (snapshot.hasError) {
-                  return Center(
+      body: StreamBuilder<List<ScanResult>>(
+        stream: FirestoreService().watchHistory(effectiveUid),
+        initialData: initialHistory,
+        builder: (context, snapshot) {
+          final scans = snapshot.data ?? initialHistory;
+          if (scans.isEmpty && snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+          }
+          if (snapshot.hasError && scans.isEmpty) {
+            return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
@@ -154,7 +155,6 @@ class HistoryScreen extends StatelessWidget {
                     ),
                   );
                 }
-                final scans = snapshot.data ?? [];
                 if (scans.isEmpty) {
                   return Center(
                     child: Padding(
@@ -254,7 +254,7 @@ class HistoryScreen extends StatelessWidget {
                               IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.textMuted, size: 20),
                                 tooltip: 'Delete record',
-                                onPressed: () => _confirmDelete(context, uid, scan.id!),
+                                onPressed: () => _confirmDelete(context, effectiveUid, scan.id!),
                               ),
                             ],
                           ],

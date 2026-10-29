@@ -15,12 +15,11 @@ import History from './pages/History';
 import Result from './pages/Result';
 import Admin from './pages/Admin';
 import ReportScam from './pages/ReportScam';
-import FloatingChat from './components/FloatingChat';
 
 function RequireAuth({ user, children }) {
   if (user === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#eef1f5]">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
         <p className="text-base font-extrabold text-[#047857]">Initializing Security Shield...</p>
       </div>
     );
@@ -146,9 +145,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
-      {/* AI Cyber Assistant Floating Widget */}
-      {user && <FloatingChat />}
     </HashRouter>
   );
 }

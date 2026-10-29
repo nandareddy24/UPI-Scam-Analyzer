@@ -34,7 +34,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#eef1f5]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#f8fafc]">
       <div className="w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-8">
@@ -82,6 +82,9 @@ export default function Login() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Password</label>
+                <Link to="/verify-otp" className="text-[11px] font-bold text-emerald-700 hover:underline">
+                  Forgot Password?
+                </Link>
               </div>
               <input
                 type="password"

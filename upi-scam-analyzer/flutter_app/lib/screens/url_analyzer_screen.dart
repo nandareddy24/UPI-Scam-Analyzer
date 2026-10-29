@@ -29,10 +29,8 @@ class _UrlAnalyzerScreenState extends State<UrlAnalyzerScreen> {
     setState(() => _loading = true);
     final result = AnalyzerService.analyzeUrl(text);
 
-    final uid = AuthService().currentUser?.uid;
-    if (uid != null) {
-      FirestoreService().saveScan(uid, result);
-    }
+    final uid = AuthService().currentUser?.uid ?? 'local_user';
+    FirestoreService().saveScan(uid, result.copyWith(id: 'url_${DateTime.now().millisecondsSinceEpoch}'));
 
     if (!mounted) return;
     setState(() => _loading = false);

@@ -59,7 +59,7 @@ export default function VerifyOtp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#eef1f5]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#f8fafc]">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 mb-3 shadow-sm border border-emerald-200">
