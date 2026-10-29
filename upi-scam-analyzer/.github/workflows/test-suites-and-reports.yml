@@ -2,9 +2,9 @@ name: UPI Scam Analyzer — All 4 Test Suites & Excel Report Artifacts
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [ main, master, dev, upi_2 ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, upi_2 ]
   workflow_dispatch:
     inputs:
       test_scope:
