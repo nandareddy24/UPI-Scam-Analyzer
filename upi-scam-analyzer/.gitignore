@@ -1,0 +1,20 @@
+# Backend
+backend-otp-server/node_modules/
+backend-otp-server/.env
+
+# React web app
+web_app/node_modules/
+web_app/dist/
+web_app/.env
+
+# Flutter
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/.packages
+flutter_app/build/
+flutter_app/*.iml
+flutter_app/lib/firebase_options.dart.bak
+
+# OS
+.DS_Store

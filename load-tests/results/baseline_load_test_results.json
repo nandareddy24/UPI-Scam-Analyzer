@@ -1,0 +1,158 @@
+{
+  "metadata": {
+    "testName": "UPI Scam Analyzer Baseline Load Test",
+    "timestamp": "2026-10-29T13:27:29.388Z",
+    "targetUrl": "http://127.0.0.1:4000",
+    "virtualUsers": 25,
+    "durationSeconds": 5.057,
+    "totalRequests": 2664,
+    "successfulRequests": 2664,
+    "failedRequests": 0,
+    "errorRatePercent": 0,
+    "totalBytes": 279351,
+    "overallPass": true
+  },
+  "rps": {
+    "average": 526.8,
+    "target": 120,
+    "pass": true
+  },
+  "latency": {
+    "min": 9.39,
+    "max": 86.31,
+    "avg": 29.5,
+    "p50": 30.87,
+    "p75": 34.07,
+    "p90": 40.81,
+    "p95": 45.39,
+    "p99": 63.07,
+    "slaTargets": {
+      "minRequestsPerSecond": 100,
+      "targetRequestsPerSecond": 120,
+      "maxAvgResponseTimeMs": 250,
+      "maxMinResponseTimeMs": 50,
+      "maxP95ResponseTimeMs": 800,
+      "maxMaxResponseTimeMs": 1500,
+      "maxErrorRatePercentage": 1
+    },
+    "checks": {
+      "avgPass": true,
+      "minPass": true,
+      "maxPass": true
+    }
+  },
+  "endpoints": [
+    {
+      "name": "GET /health",
+      "requests": 665,
+      "rps": 131.5,
+      "errors": 0,
+      "min": 9.39,
+      "avg": 29.87,
+      "max": 85.76,
+      "p50": 31.01,
+      "p95": 45.88,
+      "p99": 76.85,
+      "pass": true
+    },
+    {
+      "name": "POST /api/verify-otp",
+      "requests": 664,
+      "rps": 131.3,
+      "errors": 0,
+      "min": 9.57,
+      "avg": 29.57,
+      "max": 84.75,
+      "p50": 30.87,
+      "p95": 46.22,
+      "p99": 63.07,
+      "pass": true
+    },
+    {
+      "name": "POST /api/analyze/message",
+      "requests": 668,
+      "rps": 132.1,
+      "errors": 0,
+      "min": 12.02,
+      "avg": 29.64,
+      "max": 86.31,
+      "p50": 30.88,
+      "p95": 45.77,
+      "p99": 56.59,
+      "pass": true
+    },
+    {
+      "name": "POST /api/analyze/upi",
+      "requests": 667,
+      "rps": 131.9,
+      "errors": 0,
+      "min": 10.04,
+      "avg": 28.93,
+      "max": 82.6,
+      "p50": 30.74,
+      "p95": 43.8,
+      "p99": 64.14,
+      "pass": true
+    }
+  ],
+  "timeline": [
+    {
+      "second": 1,
+      "virtualUsers": 25,
+      "requests": 501,
+      "rps": 501,
+      "avgLatencyMs": 31.66,
+      "minLatencyMs": 9.39,
+      "maxLatencyMs": 86.31,
+      "bytes": 52283,
+      "errors": 0
+    },
+    {
+      "second": 2,
+      "virtualUsers": 25,
+      "requests": 524,
+      "rps": 524,
+      "avgLatencyMs": 29.74,
+      "minLatencyMs": 10.04,
+      "maxLatencyMs": 64.14,
+      "bytes": 55335,
+      "errors": 0
+    },
+    {
+      "second": 3,
+      "virtualUsers": 25,
+      "requests": 528,
+      "rps": 528,
+      "avgLatencyMs": 29.51,
+      "minLatencyMs": 12.02,
+      "maxLatencyMs": 51.02,
+      "bytes": 54862,
+      "errors": 0
+    },
+    {
+      "second": 4,
+      "virtualUsers": 25,
+      "requests": 538,
+      "rps": 538,
+      "avgLatencyMs": 29.36,
+      "minLatencyMs": 10.6,
+      "maxLatencyMs": 57.83,
+      "bytes": 56346,
+      "errors": 0
+    },
+    {
+      "second": 5,
+      "virtualUsers": 25,
+      "requests": 555,
+      "rps": 555,
+      "avgLatencyMs": 27.5,
+      "minLatencyMs": 9.57,
+      "maxLatencyMs": 57.3,
+      "bytes": 58410,
+      "errors": 0
+    }
+  ],
+  "statusCodes": {
+    "200": 2664
+  }
+}

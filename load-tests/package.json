@@ -1,0 +1,26 @@
+{
+  "name": "upi-scam-analyzer-baseline-load-tests",
+  "version": "1.0.0",
+  "description": "Baseline & Concurrency Load Testing Suite for UPI Scam Analyzer API (100 Virtual Users, 1 Minute)",
+  "main": "tests/baseline-load-test.js",
+  "scripts": {
+    "test": "node tests/baseline-load-test.js --users 100 --duration 60",
+    "test:baseline": "node tests/baseline-load-test.js --users 100 --duration 60",
+    "test:mock": "node tests/baseline-load-test.js --users 100 --duration 60 --mock-server",
+    "test:quick": "node tests/baseline-load-test.js --users 25 --duration 15",
+    "test:stress": "node tests/baseline-load-test.js --users 250 --duration 60",
+    "report": "python generate_load_test_report.py"
+  },
+  "keywords": [
+    "load-testing",
+    "baseline-testing",
+    "performance-testing",
+    "concurrency",
+    "rps",
+    "latency",
+    "upi-scam-analyzer"
+  ],
+  "author": "Antigravity Testing Suite",
+  "license": "ISC"
+}
+

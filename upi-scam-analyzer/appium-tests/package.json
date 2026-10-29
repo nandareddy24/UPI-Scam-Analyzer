@@ -1,0 +1,29 @@
+{
+  "name": "upi-scam-analyzer-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium 2.x Mobile End-to-End Functional Test Suite for UPI Scam Analyzer Mobile App",
+  "main": "tests/app-tests.js",
+  "scripts": {
+    "test": "node tests/app-tests.js",
+    "test:local": "node app-tests.js",
+    "report": "python generate_appium_test_report.py"
+  },
+  "keywords": [
+    "appium",
+    "mobile-testing",
+    "e2e",
+    "flutter",
+    "android",
+    "uiautomator2",
+    "webdriverio"
+  ],
+  "author": "Antigravity Quality Engineering",
+  "license": "ISC",
+  "dependencies": {
+    "appium": "^2.5.4",
+    "webdriverio": "^8.36.0"
+  },
+  "devDependencies": {
+    "appium-uiautomator2-driver": "^3.5.0"
+  }
+}

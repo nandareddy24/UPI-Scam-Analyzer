@@ -1,0 +1,24 @@
+{
+  "name": "upi-scam-analyzer-selenium-tests",
+  "version": "1.0.0",
+  "description": "Selenium WebDriver End-to-End Test Suite for UPI Scam Analyzer Web Frontend",
+  "main": "tests/login-tests.js",
+  "scripts": {
+    "test": "node tests/login-tests.js",
+    "test:headed": "set HEADLESS=false&& node tests/login-tests.js"
+  },
+  "keywords": [
+    "selenium",
+    "webdriver",
+    "e2e",
+    "testing",
+    "login",
+    "authentication"
+  ],
+  "author": "Antigravity Testing Suite",
+  "license": "ISC",
+  "dependencies": {
+    "chromedriver": "^124.0.0",
+    "selenium-webdriver": "^4.20.0"
+  }
+}

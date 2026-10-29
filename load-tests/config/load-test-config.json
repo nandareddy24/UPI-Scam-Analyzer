@@ -1,0 +1,79 @@
+{
+  "testName": "UPI Scam Analyzer Baseline Load Test",
+  "version": "1.0.0",
+  "target": {
+    "baseUrl": "http://127.0.0.1:4000",
+    "timeoutMs": 5000,
+    "keepAlive": true,
+    "maxSockets": 200
+  },
+  "loadProfile": {
+    "virtualUsers": 100,
+    "durationSeconds": 60,
+    "thinkTimeMs": 20,
+    "rampUpSeconds": 5
+  },
+  "scenarios": [
+    {
+      "id": "SCN_01_HEALTH",
+      "name": "Health Check & Service Liveness",
+      "method": "GET",
+      "path": "/health",
+      "weight": 25,
+      "expectedStatus": [200]
+    },
+    {
+      "id": "SCN_02_OTP_VERIFY",
+      "name": "OTP Verification Endpoint",
+      "method": "POST",
+      "path": "/api/verify-otp",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "email": "loadtest.user@example.com",
+        "otp": "123456"
+      },
+      "weight": 25,
+      "expectedStatus": [200, 400]
+    },
+    {
+      "id": "SCN_03_MSG_ANALYZER",
+      "name": "Scam Message Pattern Analysis",
+      "method": "POST",
+      "path": "/api/analyze/message",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "message": "URGENT: Your SBI account is blocked due to KYC expiry. Click here to verify your details immediately: https://bit.ly/sbi-kyc-verify"
+      },
+      "weight": 25,
+      "expectedStatus": [200]
+    },
+    {
+      "id": "SCN_04_UPI_ANALYZER",
+      "name": "UPI ID Verification & Risk Scoring",
+      "method": "POST",
+      "path": "/api/analyze/upi",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "upiId": "refund.desk.sbi@fakebank"
+      },
+      "weight": 25,
+      "expectedStatus": [200]
+    }
+  ],
+  "slaThresholds": {
+    "minRequestsPerSecond": 100,
+    "targetRequestsPerSecond": 120,
+    "maxAvgResponseTimeMs": 250,
+    "maxMinResponseTimeMs": 50,
+    "maxP95ResponseTimeMs": 800,
+    "maxMaxResponseTimeMs": 1500,
+    "maxErrorRatePercentage": 1.0
+  }
+}
+
