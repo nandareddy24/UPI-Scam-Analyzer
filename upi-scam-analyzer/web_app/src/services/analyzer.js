@@ -1,5 +1,5 @@
-// Pure, offline, rule-based scam analysis engine — aligned with nandareddy24/UPI-Scam-Analyzer
-// Provides detailed Threat Score (0-25), Confidence %, Verdict Badges, AI Findings & Safety Advice.
+// Pure, offline, rule-based scam analysis engine aligned with nandareddy24/UPI-Scam-Analyzer
+// Provides detailed Threat Score (0-25), Confidence %, Verdict Badges, Findings and Safety Advice.
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -64,12 +64,12 @@ export function analyzeMessage(message) {
 
   if (/https?:\/\/|www\./.test(text)) {
     rawScore += 5;
-    reasons.push('Contains an embedded external link — scam messages often push users to click phishing URLs.');
+    reasons.push('Contains an embedded external link. Scam messages often push users to click phishing URLs.');
   }
 
   if (/\b\d{4,}\b/.test(text) && text.includes('otp')) {
     rawScore += 5;
-    reasons.push('Mentions OTP alongside a numeric code — never share OTPs with anyone.');
+    reasons.push('Mentions OTP alongside a numeric code. Never share OTPs with anyone.');
   }
 
   if (message.includes('!!!') || /[A-Z]{6,}/.test(message)) {
@@ -150,7 +150,7 @@ export function analyzeUpiId(upiId) {
   const namePart = id.split('@')[0];
   if (/^\d+$/.test(namePart)) {
     rawScore += 6;
-    reasons.push('UPI ID username is entirely numeric — common pattern in automated fraud accounts.');
+    reasons.push('UPI ID username is entirely numeric, a common pattern in automated fraud accounts.');
   }
 
   if (namePart.length <= 3) {
@@ -229,7 +229,7 @@ export function analyzeUrl(rawUrl) {
 
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(url.hostname)) {
     rawScore += 12;
-    reasons.push('Uses a raw IP address instead of a domain name — severe phishing indicator.');
+    reasons.push('Uses a raw IP address instead of a domain name, which is a severe phishing indicator.');
   }
 
   if (SHORTENERS.some((s) => url.hostname.includes(s))) {
@@ -240,7 +240,7 @@ export function analyzeUrl(rawUrl) {
   const hyphenCount = (url.hostname.match(/-/g) || []).length;
   if (hyphenCount >= 2) {
     rawScore += 5;
-    reasons.push('Domain name contains multiple hyphens (common typo-squatting trick).');
+    reasons.push('Domain name contains multiple hyphens, a common typo-squatting trick.');
   }
 
   for (const word of SUSPICIOUS_URL_WORDS) {
@@ -277,7 +277,6 @@ export function analyzeUrl(rawUrl) {
 }
 
 export function analyzeOcrQr(imageName, sampleText = '') {
-  // OCR / QR analysis simulation
   const text = sampleText.toLowerCase();
   if (text.includes('upi://pay') || text.includes('paytm') || text.includes('gpay')) {
     return analyzeMessage(sampleText || 'Payment request QR code scanned');

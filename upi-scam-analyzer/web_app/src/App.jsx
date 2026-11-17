@@ -15,12 +15,14 @@ import History from './pages/History';
 import Result from './pages/Result';
 import Admin from './pages/Admin';
 import ReportScam from './pages/ReportScam';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Terms from './pages/Terms';
 
 function RequireAuth({ user, children }) {
   if (user === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-        <p className="text-base font-extrabold text-[#047857]">Initializing Security Shield...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-xs font-semibold text-slate-600">Verifying security session...</p>
       </div>
     );
   }
@@ -44,6 +46,11 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
+        {/* Public Legal Pages */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<Terms />} />
+
+        {/* Public Auth & Landing Pages */}
         <Route
           path="/landing"
           element={
@@ -70,6 +77,7 @@ export default function App() {
         />
         <Route path="/verify-otp" element={<VerifyOtp />} />
 
+        {/* Authenticated Application Routes */}
         <Route
           path="/"
           element={

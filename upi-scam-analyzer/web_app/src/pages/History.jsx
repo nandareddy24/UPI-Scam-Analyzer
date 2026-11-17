@@ -1,4 +1,5 @@
 import AppLayout from '../components/AppLayout';
+import { Clock, ShieldAlert, ShieldCheck, AlertTriangle } from '../components/Icons';
 
 export default function History() {
   const mockScans = [
@@ -11,41 +12,46 @@ export default function History() {
   return (
     <AppLayout>
       <div className="space-y-6 max-w-4xl">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">📜 Scan Audit History</h1>
-          <p className="text-slate-500 text-xs mt-1">
-            Review past inspections, threat scores, and flagged payloads across your account.
+        <div className="border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-8 h-8 rounded-md bg-slate-100 text-slate-800 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Personal Scan Audit History</h1>
+          </div>
+          <p className="text-xs text-slate-500">
+            Review past inspections, threat scores, and flagged payloads across your account session.
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-[20px] border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm divide-y divide-slate-100">
           {mockScans.map((item, idx) => (
             <div
               key={idx}
-              className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between hover:bg-slate-50 transition-colors"
+              className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors gap-3"
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3">
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xs ${
+                  className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-xs ${
                     item.badge === 'danger'
-                      ? 'bg-red-100 text-red-700 border border-red-200'
+                      ? 'bg-red-50 text-red-700 border border-red-200'
                       : item.badge === 'warning'
-                      ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                      : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   }`}
                 >
                   {item.type}
                 </div>
 
                 <div>
-                  <h4 className="font-bold text-slate-900 text-sm font-mono">{item.target}</h4>
-                  <p className="text-xs text-slate-500">{item.result} • {item.date}</p>
+                  <h4 className="font-semibold text-slate-900 text-xs font-mono">{item.target}</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{item.result} &bull; {item.date}</p>
                 </div>
               </div>
 
               <div className="text-right">
                 <span
-                  className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
                     item.badge === 'danger'
                       ? 'bg-red-100 text-red-800'
                       : item.badge === 'warning'
@@ -55,7 +61,7 @@ export default function History() {
                 >
                   {item.badge}
                 </span>
-                <div className="text-xs font-bold text-slate-600 mt-1 font-mono">
+                <div className="text-xs font-semibold text-slate-600 mt-1 font-mono">
                   Score: {item.score}
                 </div>
               </div>

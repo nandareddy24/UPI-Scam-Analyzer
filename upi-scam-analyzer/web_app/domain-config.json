@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "upi-scam-analyzer-domain-config",
+  "version": "1.0.0",
+  "customDomain": {
+    "primary": "upiscamanalyzer.com",
+    "subdomain": "www.upiscamanalyzer.com",
+    "fallbackHostingDomain": "upi-scam.web.app",
+    "ssl": {
+      "tlsVersion": "TLSv1.3",
+      "hstsEnabled": true,
+      "forceHttps": true
+    },
+    "dnsRecords": [
+      {
+        "type": "A",
+        "name": "@",
+        "value": "199.36.158.100",
+        "ttl": 3600
+      },
+      {
+        "type": "CNAME",
+        "name": "www",
+        "value": "upi-scam.web.app.",
+        "ttl": 3600
+      }
+    ]
+  }
+}

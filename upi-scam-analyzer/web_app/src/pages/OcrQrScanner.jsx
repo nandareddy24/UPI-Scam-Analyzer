@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AppLayout from '../components/AppLayout';
 import { analyzeOcrQr } from '../services/analyzer';
+import { Camera, QrCode, Search, ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2 } from '../components/Icons';
 
 export default function OcrQrScanner() {
   const [ocrFileName, setOcrFileName] = useState('');
@@ -16,7 +17,7 @@ export default function OcrQrScanner() {
       const res = analyzeOcrQr(ocrFileName || 'payment_screenshot.png', 'Suspicious UPI VPA extracted: refund-care@ybl');
       setResult(res);
       setLoading(false);
-    }, 400);
+    }, 300);
   }
 
   function handleQrScan(e) {
@@ -27,39 +28,40 @@ export default function OcrQrScanner() {
       const res = analyzeOcrQr(qrFileName || 'qr_image.png', payload);
       setResult(res);
       setLoading(false);
-    }, 400);
+    }, 300);
   }
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Page Title Header matching Image 2 */}
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OCR Screenshot & QR Scanner</h1>
-          <p className="text-slate-500 text-xs mt-1 leading-relaxed">
-            Upload payment screenshots, WhatsApp chats, or QR images to extract and verify threat data automatically.
+        <div className="border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-8 h-8 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center">
+              <Camera className="w-4 h-4" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">OCR Screenshot & QR Code Scanner</h1>
+          </div>
+          <p className="text-xs text-slate-500">
+            Upload payment screenshots, WhatsApp chat evidence, or QR code images to extract and verify threat data automatically.
           </p>
         </div>
 
-        {/* 2-Card Grid matching Image 2 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* OCR Screenshot Scanner Card */}
-          <div className="bg-white border border-slate-200 shadow-sm rounded-[20px] p-6 flex flex-col justify-between">
+          <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-md bg-slate-100 text-slate-800 flex items-center justify-center">
+                  <Camera className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">OCR Screenshot Scanner</h3>
-                  <p className="text-xs text-slate-400 font-medium">Extracts UPI VPAs & URLs from images</p>
+                  <h3 className="text-sm font-bold text-slate-900">OCR Screenshot Extractor</h3>
+                  <p className="text-[11px] text-slate-500">Extracts VPAs and URLs from payment receipts</p>
                 </div>
               </div>
 
               <form onSubmit={handleOcrScan} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-200 hover:border-emerald-700 rounded-2xl p-6 text-center bg-slate-50/50 cursor-pointer transition-colors">
+                <div className="border-2 border-dashed border-slate-300 hover:border-emerald-700 rounded-md p-6 text-center bg-slate-50/50 cursor-pointer transition-colors">
                   <input
                     type="file"
                     id="ocrFile"
@@ -67,12 +69,10 @@ export default function OcrQrScanner() {
                     className="hidden"
                     onChange={(e) => setOcrFileName(e.target.files[0]?.name || '')}
                   />
-                  <label htmlFor="ocrFile" className="cursor-pointer">
-                    <svg className="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                    <span className="text-xs font-semibold text-slate-600 block">
-                      {ocrFileName ? `Selected: ${ocrFileName}` : 'Click to upload screenshot (.png, .jpg, .webp)'}
+                  <label htmlFor="ocrFile" className="cursor-pointer block">
+                    <Camera className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <span className="text-xs font-semibold text-slate-700 block">
+                      {ocrFileName ? `Selected: ${ocrFileName}` : 'Choose image file (.png, .jpg, .webp)'}
                     </span>
                   </label>
                 </div>
@@ -80,31 +80,30 @@ export default function OcrQrScanner() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 rounded-xl text-xs transition-colors shadow"
+                  className="w-full bg-[#047857] hover:bg-[#065f46] text-white font-bold py-2.5 rounded-md text-xs transition-colors shadow-sm inline-flex items-center justify-center gap-2"
                 >
-                  {loading ? 'Running OCR Scan...' : 'Scan Screenshot'}
+                  <Search className="w-3.5 h-3.5" />
+                  <span>{loading ? 'Processing OCR...' : 'Scan Screenshot Image'}</span>
                 </button>
               </form>
             </div>
           </div>
 
           {/* QR Fraud Detector Card */}
-          <div className="bg-white border border-slate-200 shadow-sm rounded-[20px] p-6 flex flex-col justify-between">
+          <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
-                  </svg>
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-md bg-slate-100 text-slate-800 flex items-center justify-center">
+                  <QrCode className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900">QR Fraud Detector</h3>
-                  <p className="text-xs text-slate-400 font-medium">Decodes UPI QR codes & pay payloads</p>
+                  <h3 className="text-sm font-bold text-slate-900">QR Payload Decoder</h3>
+                  <p className="text-[11px] text-slate-500">Decodes embedded UPI payment payloads</p>
                 </div>
               </div>
 
               <form onSubmit={handleQrScan} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-200 hover:border-emerald-700 rounded-2xl p-6 text-center bg-slate-50/50 cursor-pointer transition-colors">
+                <div className="border-2 border-dashed border-slate-300 hover:border-emerald-700 rounded-md p-6 text-center bg-slate-50/50 cursor-pointer transition-colors">
                   <input
                     type="file"
                     id="qrFile"
@@ -112,30 +111,29 @@ export default function OcrQrScanner() {
                     className="hidden"
                     onChange={(e) => setQrFileName(e.target.files[0]?.name || '')}
                   />
-                  <label htmlFor="qrFile" className="cursor-pointer">
-                    <svg className="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    <span className="text-xs font-semibold text-slate-600 block">
-                      {qrFileName ? `Selected: ${qrFileName}` : 'Click to upload QR Image'}
+                  <label htmlFor="qrFile" className="cursor-pointer block">
+                    <QrCode className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <span className="text-xs font-semibold text-slate-700 block">
+                      {qrFileName ? `Selected: ${qrFileName}` : 'Choose QR image file'}
                     </span>
                   </label>
                 </div>
 
                 <input
                   type="text"
-                  placeholder="or paste payload: upi://pay?pa=scamuser@ybl..."
+                  placeholder="Or enter UPI payload: upi://pay?pa=handle@bank..."
                   value={qrPayload}
                   onChange={(e) => setQrPayload(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-emerald-700"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-xs font-mono focus:outline-none focus:border-emerald-700 text-slate-900"
                 />
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#14532d] hover:bg-[#166534] text-white font-bold py-3 rounded-xl text-xs transition-colors shadow"
+                  className="w-full bg-[#047857] hover:bg-[#065f46] text-white font-bold py-2.5 rounded-md text-xs transition-colors shadow-sm inline-flex items-center justify-center gap-2"
                 >
-                  {loading ? 'Decoding QR...' : 'Decode & Scan QR'}
+                  <Search className="w-3.5 h-3.5" />
+                  <span>{loading ? 'Decoding Payload...' : 'Decode & Verify QR Code'}</span>
                 </button>
               </form>
             </div>
@@ -144,30 +142,57 @@ export default function OcrQrScanner() {
 
         {/* Scan Result Output */}
         {result && (
-          <div className="bg-white p-6 rounded-[20px] border border-slate-200 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Classification Result</span>
-                <h3 className="text-xl font-extrabold text-slate-900">{result.result} ({result.status})</h3>
-              </div>
-              <div className="sm:text-right">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Threat Score</span>
-                <div className="text-2xl font-extrabold font-mono text-slate-900">
-                  {result.score} <span className="text-xs font-normal text-slate-400">/ 25</span>
+          <div className={`p-5 rounded-md border-l-4 shadow-sm ${
+            result.score >= 10 ? 'bg-red-50 border-red-600 text-red-950' :
+            result.score >= 5 ? 'bg-amber-50 border-amber-600 text-amber-950' :
+            'bg-emerald-50 border-emerald-600 text-emerald-950'
+          }`}>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-black/10 pb-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                {result.score >= 10 ? (
+                  <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0" />
+                ) : result.score >= 5 ? (
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                ) : (
+                  <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                )}
+                <div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                    result.score >= 10 ? 'bg-red-100 text-red-800 border-red-200' :
+                    result.score >= 5 ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                    'bg-emerald-100 text-emerald-800 border-emerald-200'
+                  }`}>
+                    {result.status}
+                  </span>
+                  <h3 className="text-base font-bold mt-1 text-slate-900">{result.result}</h3>
                 </div>
               </div>
+
+              <div className="text-right text-xs">
+                <div className="text-[10px] font-semibold uppercase text-slate-500">Risk Score</div>
+                <div className="text-sm font-bold text-slate-900">{result.score} / 25</div>
+              </div>
             </div>
 
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Extraction Findings</h4>
-              <p className="text-xs font-mono bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-700 leading-relaxed">
-                {result.findings}
-              </p>
-            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <span className="font-bold uppercase text-[10px] tracking-wide text-slate-700 block mb-1">
+                  Extraction Findings
+                </span>
+                <div className="bg-white/80 p-3 rounded border border-black/5 text-slate-800 leading-relaxed font-mono">
+                  {result.findings}
+                </div>
+              </div>
 
-            <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 text-xs font-semibold text-emerald-900 flex items-start gap-2">
-              <span className="text-base">💡</span>
-              <span>{result.advice}</span>
+              <div>
+                <span className="font-bold uppercase text-[10px] tracking-wide text-slate-700 block mb-1">
+                  Safety Guidance
+                </span>
+                <div className="bg-white p-3 rounded border border-black/5 text-slate-900 leading-relaxed font-semibold flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+                  <span>{result.advice}</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
