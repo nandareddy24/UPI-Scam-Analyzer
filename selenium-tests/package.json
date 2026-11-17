@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "chromedriver": "^124.0.0",
+    "exceljs": "^4.4.0",
     "selenium-webdriver": "^4.20.0"
   }
 }

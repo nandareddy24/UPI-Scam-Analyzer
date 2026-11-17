@@ -72,3 +72,4 @@ nslookup www.yourdomain.com
 # Verify HTTPS and TLS handshake
 curl -I https://yourdomain.com
 ```
+
