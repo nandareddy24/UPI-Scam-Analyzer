@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/authService';
-import { Shield, Lock, AlertCircle, ArrowRight } from '../components/Icons';
+import { Shield, AlertCircle, ArrowRight } from '../components/Icons';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -40,28 +40,28 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Logo & Header */}
           <div className="text-center mb-6">
-            <Link to="/" className="inline-flex items-center gap-2 mb-3 text-slate-900 hover:text-emerald-800 transition-colors">
+            <Link to="/" className="inline-flex items-center gap-2.5 mb-2 text-slate-900 hover:text-emerald-800 transition-colors">
               <div className="w-10 h-10 rounded-lg bg-slate-900 text-emerald-400 flex items-center justify-center">
                 <Shield className="w-5 h-5" />
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-slate-900">UPI Scam Analyzer</span>
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Scam Shield</h1>
             </Link>
-            <p className="text-slate-500 text-xs">Sign in to access your threat analysis dashboard</p>
+            <p className="text-slate-500 text-xs mt-1">UPI & Cyber Fraud Intelligence Platform</p>
           </div>
 
           {/* Login Card */}
           <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 sm:p-8">
             <div className="mb-6 border-b border-slate-200 pb-3">
-              <h2 className="text-lg font-bold text-slate-900">Account Authentication</h2>
-              <p className="text-slate-500 text-xs mt-0.5">Enter your registered email address and password.</p>
+              <h2 className="text-lg font-bold text-slate-900">Sign In to Account</h2>
+              <p className="text-slate-500 text-xs mt-0.5">Enter your credentials to access security analysis tools.</p>
             </div>
 
             {error && (
               <div className="mb-5 bg-red-50 border border-red-200 p-3.5 rounded-md flex items-start gap-2.5 text-xs text-red-800">
                 <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong className="block text-red-900 font-bold">Authentication Error</strong>
-                  {error}
+                  <h4 className="text-xs font-bold text-red-800 uppercase tracking-wider">Invalid Credentials</h4>
+                  <p className="text-xs font-medium text-red-600 mt-0.5 leading-relaxed">{error}</p>
                 </div>
               </div>
             )}
@@ -106,17 +106,16 @@ export default function Login() {
                   disabled={loading}
                   className="w-full bg-[#047857] hover:bg-[#065f46] text-white font-bold py-2.5 px-4 rounded-md text-xs tracking-wide transition-colors shadow-sm inline-flex items-center justify-center gap-2"
                 >
-                  <span>{loading ? 'Authenticating...' : 'Sign In to Security Dashboard'}</span>
-                  {!loading && <ArrowRight className="w-3.5 h-3.5" />}
+                  <span>{loading ? 'Authenticating...' : 'Sign In to Dashboard →'}</span>
                 </button>
               </div>
             </form>
 
             <div className="mt-6 pt-5 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-600">
-                Do not have an account?{' '}
+                Don't have an account?{' '}
                 <Link to="/signup" className="text-emerald-700 font-bold hover:underline">
-                  Create Free Account
+                  Create Account
                 </Link>
               </p>
             </div>
